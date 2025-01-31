@@ -20,7 +20,7 @@ export default function UniqueVisitorCard() {
     <>
       <Grid container alignItems="center" justifyContent="space-between">
         <Grid item>
-          <Typography variant="h5">Unique Visitor</Typography>
+          <Typography variant="h5">Patient Overview</Typography>
         </Grid>
         <Grid item>
           <Stack direction="row" alignItems="center" spacing={0}>
@@ -48,6 +48,7 @@ export default function UniqueVisitorCard() {
           <IncomeAreaChart slot={slot} />
         </Box>
       </MainCard>
+
     </>
   );
 }

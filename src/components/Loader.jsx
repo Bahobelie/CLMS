@@ -18,7 +18,13 @@ const LoaderWrapper = styled('div')(({ theme }) => ({
 
 const Loader = () => (
   <LoaderWrapper>
-    <LinearProgress color="primary" />
+    <LinearProgress
+      sx={{
+        '& .MuiLinearProgress-bar': {
+          backgroundColor: '#07B8DB' // Custom color
+        }
+      }}
+    />
   </LoaderWrapper>
 );
 

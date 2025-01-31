@@ -34,7 +34,7 @@ export default function SaleReportCard() {
     <>
       <Grid container alignItems="center" justifyContent="space-between">
         <Grid item>
-          <Typography variant="h5">Sales Report</Typography>
+          <Typography variant="h5">Medicine Sales Report</Typography>
         </Grid>
         <Grid item>
           <TextField

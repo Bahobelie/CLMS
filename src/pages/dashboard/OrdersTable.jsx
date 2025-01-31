@@ -23,7 +23,7 @@ function createData(tracking_no, name, fat, carbs, protein) {
 
 const rows = [
   createData(84564564, 'Camera Lens', 40, 2, 40570),
-  createData(98764564, 'Laptop', 300, 0, 180139),
+  createData(98764564, 'Laptop', 300, 180139),
   createData(98756325, 'Mobile', 355, 1, 90989),
   createData(98652366, 'Handset', 50, 1, 10239),
   createData(13286564, 'Computer Accessories', 100, 1, 83348),
@@ -71,26 +71,19 @@ const headCells = [
     id: 'name',
     align: 'left',
     disablePadding: true,
-    label: 'Product Name'
-  },
-  {
-    id: 'fat',
-    align: 'right',
-    disablePadding: false,
-    label: 'Total Order'
+    label: 'Patients Name'
   },
   {
     id: 'carbs',
     align: 'left',
     disablePadding: false,
-
     label: 'Status'
   },
   {
     id: 'protein',
     align: 'right',
     disablePadding: false,
-    label: 'Total Amount'
+    label: 'Total Payment'
   }
 ];
 
@@ -147,7 +140,7 @@ function OrderStatus({ status }) {
 
 // ==============================|| ORDER TABLE ||============================== //
 
-export default function OrderTable() {
+export default function PatientsRecord() {
   const order = 'asc';
   const orderBy = 'tracking_no';
 
@@ -181,7 +174,6 @@ export default function OrderTable() {
                     <Link color="secondary"> {row.tracking_no}</Link>
                   </TableCell>
                   <TableCell>{row.name}</TableCell>
-                  <TableCell align="right">{row.fat}</TableCell>
                   <TableCell>
                     <OrderStatus status={row.carbs} />
                   </TableCell>

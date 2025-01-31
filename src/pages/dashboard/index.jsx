@@ -11,10 +11,15 @@ import ListItemText from '@mui/material/ListItemText';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
+import { LuUsers } from 'react-icons/lu';
+import { MdOutlineDateRange } from 'react-icons/md';
+import { FaRegFileLines } from 'react-icons/fa6';
+import { LiaDollarSignSolid } from 'react-icons/lia';
+import * as data from '../../data/Patinet';
 
 // project import
 import MainCard from 'components/MainCard';
-import AnalyticEcommerce from 'components/cards/statistics/AnalyticEcommerce';
+import AnalyticReport from 'components/cards/statistics/AnalyticReport';
 import MonthlyBarChart from './MonthlyBarChart';
 import ReportAreaChart from './ReportAreaChart';
 import UniqueVisitorCard from './UniqueVisitorCard';
@@ -29,6 +34,10 @@ import avatar1 from 'assets/images/users/avatar-1.png';
 import avatar2 from 'assets/images/users/avatar-2.png';
 import avatar3 from 'assets/images/users/avatar-3.png';
 import avatar4 from 'assets/images/users/avatar-4.png';
+import { useTheme } from '@mui/material/styles';
+import BarChart from './Barchart';
+import IconButton from '@mui/material/IconButton';
+import { BsTelegram } from 'react-icons/bs';
 
 // avatar style
 const avatarSX = {
@@ -50,23 +59,82 @@ const actionSX = {
 // ==============================|| DASHBOARD - DEFAULT ||============================== //
 
 export default function DashboardDefault() {
+  const theme = useTheme();
   return (
     <Grid container rowSpacing={4.5} columnSpacing={2.75}>
-      {/* row 1 */}
       <Grid item xs={12} sx={{ mb: -2.25 }}>
         <Typography variant="h5">Dashboard</Typography>
       </Grid>
       <Grid item xs={12} sm={6} md={4} lg={3}>
-        <AnalyticEcommerce title="Total Page Views" count="4,42,236" percentage={59.3} extra="35,000" />
+        <AnalyticReport
+          iconSx={{
+            color: theme.palette.primary[100],
+            padding: '5px',
+            marginRight: '12px',
+            backgroundColor: theme.palette.secondary[100]
+          }}
+          icon={LuUsers}
+          title="Total Patients"
+          percentage={59.3}
+          extra="35,000"
+        >
+          <BarChart data={data.Patient} />
+        </AnalyticReport>
       </Grid>
       <Grid item xs={12} sm={6} md={4} lg={3}>
-        <AnalyticEcommerce title="Total Users" count="78,250" percentage={70.5} extra="8,900" />
+        <AnalyticReport
+          iconSx={{
+            color: theme.palette.primary[100],
+            padding: '5px',
+            marginRight: '12px',
+            backgroundColor: theme.palette.secondary[100]
+          }}
+          icon={MdOutlineDateRange}
+          title="Appointments"
+          count="78,250"
+          percentage={70.5}
+          extra="8,900"
+        >
+          <BarChart data={data.Appointments} barColor={theme.palette.text.yellow} />
+        </AnalyticReport>
       </Grid>
       <Grid item xs={12} sm={6} md={4} lg={3}>
-        <AnalyticEcommerce title="Total Order" count="18,800" percentage={27.4} isLoss color="warning" extra="1,943" />
+        <AnalyticReport
+          icon={FaRegFileLines}
+          title="Prescriptions"
+          count="18,800"
+          percentage={27.4}
+          iconSx={{
+            color: theme.palette.primary[100],
+            padding: '5px',
+            marginRight: '12px',
+            backgroundColor: theme.palette.secondary[100]
+          }}
+          isLoss
+          color="warning"
+          extra="1,943"
+        >
+          <BarChart data={data.Prescriptions} barColor={theme.palette.success.dark} />
+        </AnalyticReport>
       </Grid>
       <Grid item xs={12} sm={6} md={4} lg={3}>
-        <AnalyticEcommerce title="Total Sales" count="$35,078" percentage={27.4} isLoss color="warning" extra="$20,395" />
+        <AnalyticReport
+          iconSx={{
+            color: theme.palette.primary[100],
+            padding: '5px',
+            marginRight: '12px',
+            backgroundColor: theme.palette.secondary[100]
+          }}
+          icon={LiaDollarSignSolid}
+          title="Total Earnings"
+          count="$35,078"
+          percentage={27.4}
+          isLoss
+          color="warning"
+          extra="$20,395"
+        >
+          <BarChart data={data.TotalEarnings} barColor={theme.palette.secondary.main} />
+        </AnalyticReport>
       </Grid>
 
       <Grid item md={8} sx={{ display: { sm: 'none', md: 'block', lg: 'none' } }} />
@@ -99,7 +167,7 @@ export default function DashboardDefault() {
       <Grid item xs={12} md={7} lg={8}>
         <Grid container alignItems="center" justifyContent="space-between">
           <Grid item>
-            <Typography variant="h5">Recent Orders</Typography>
+            <Typography variant="h5">Recent Patients</Typography>
           </Grid>
           <Grid item />
         </Grid>
@@ -163,7 +231,7 @@ export default function DashboardDefault() {
                   <GiftOutlined />
                 </Avatar>
               </ListItemAvatar>
-              <ListItemText primary={<Typography variant="subtitle1">Order #002434</Typography>} secondary="Today, 2:00 AM" />
+              <ListItemText primary={<Typography variant="subtitle1">Appointment #002434</Typography>} secondary="Today, 2:00 AM" />
               <ListItemSecondaryAction>
                 <Stack alignItems="flex-end">
                   <Typography variant="subtitle1" noWrap>
@@ -181,7 +249,10 @@ export default function DashboardDefault() {
                   <MessageOutlined />
                 </Avatar>
               </ListItemAvatar>
-              <ListItemText primary={<Typography variant="subtitle1">Order #984947</Typography>} secondary="5 August, 1:45 PM" />
+              <ListItemText
+                primary={<Typography variant="subtitle1">Check-up with Dr. John Doe #984947</Typography>}
+                secondary="5 August, 1:45 PM"
+              />
               <ListItemSecondaryAction>
                 <Stack alignItems="flex-end">
                   <Typography variant="subtitle1" noWrap>
@@ -199,7 +270,7 @@ export default function DashboardDefault() {
                   <SettingOutlined />
                 </Avatar>
               </ListItemAvatar>
-              <ListItemText primary={<Typography variant="subtitle1">Order #988784</Typography>} secondary="7 hours ago" />
+              <ListItemText primary={<Typography variant="subtitle1">Completed #988784</Typography>} secondary="7 hours ago" />
               <ListItemSecondaryAction>
                 <Stack alignItems="flex-end">
                   <Typography variant="subtitle1" noWrap>
@@ -235,7 +306,18 @@ export default function DashboardDefault() {
                 </AvatarGroup>
               </Grid>
             </Grid>
-            <Button size="small" variant="contained" sx={{ textTransform: 'capitalize' }}>
+            <Button
+              href={'https://t.me/Lamesgnc'}
+              target="_blank"
+              size="small"
+              startIcon={<BsTelegram />}
+              sx={{
+                textTransform: 'capitalize',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem', // Adds spacing between the icon and text
+              }}
+            >
               Need Help?
             </Button>
           </Stack>

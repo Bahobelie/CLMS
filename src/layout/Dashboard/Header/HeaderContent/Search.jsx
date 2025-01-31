@@ -25,7 +25,7 @@ export default function Search() {
           inputProps={{
             'aria-label': 'weight'
           }}
-          placeholder="Ctrl + K"
+          placeholder="Search Patients"
         />
       </FormControl>
     </Box>

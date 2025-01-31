@@ -43,7 +43,8 @@ export default function Palette(mode, presetColor) {
       text: {
         primary: paletteColor.grey[700],
         secondary: paletteColor.grey[500],
-        disabled: paletteColor.grey[400]
+        disabled: paletteColor.grey[400],
+        yellow: paletteColor.success.yellow
       },
       action: {
         disabled: paletteColor.grey[300]

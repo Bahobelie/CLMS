@@ -26,7 +26,7 @@ export default function Theme(colors) {
   return {
     primary: {
       lighter: blue[0],
-      100: blue[1],
+      100: '#07B8DB',
       200: blue[2],
       light: blue[3],
       400: blue[4],
@@ -82,7 +82,7 @@ export default function Theme(colors) {
       light: green[3],
       main: green[5],
       dark: green[7],
-      darker: green[9],
+      yellow: '#F9C851D8',
       contrastText
     },
     grey: greyColors

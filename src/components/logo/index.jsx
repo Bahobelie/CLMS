@@ -14,15 +14,29 @@ import config from 'config';
 
 const LogoSection = ({ sx, to }) => {
   return (
-    <ButtonBase disableRipple component={Link} to={!to ? config.defaultPath : to} sx={sx}>
+    <ButtonBase
+      disableRipple
+      component={Link}
+      to={!to ? config.defaultPath : to}
+      sx={{
+        padding: '8px 16px',
+        borderRadius: '12px',
+        transition: 'background-color 0.3s ease', // Smooth hover transition
+        ...sx, // Merge additional styles passed via sx prop
+      }}
+    >
       <Stack direction="row" spacing={1} alignItems="center">
         <Logo />
         <Chip
-          label={import.meta.env.VITE_APP_VERSION}
-          variant="outlined"
-          size="small"
-          color="secondary"
-          sx={{ mt: 0.5, ml: 1, fontSize: '0.725rem', height: 20, '& .MuiChip-label': { px: 0.5 } }}
+          label="CLMS"
+          sx={{
+            alignItems: 'center',
+            fontWeight: 'bold',
+            backgroundColor: '#07B8DB',
+            color: 'white',
+            padding: '2px 10px',
+            borderRadius: '8px',
+          }}
         />
       </Stack>
     </ButtonBase>

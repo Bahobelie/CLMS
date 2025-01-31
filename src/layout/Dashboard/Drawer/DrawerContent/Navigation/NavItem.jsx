@@ -31,7 +31,7 @@ export default function NavItem({ item, level }) {
   }
 
   const Icon = item.icon;
-  const itemIcon = item.icon ? <Icon style={{ fontSize: drawerOpen ? '1rem' : '1.25rem' }} /> : false;
+  const itemIcon = item.icon ? <Icon style={{ color: theme.palette.primary[100], fontSize: drawerOpen ? '1.27rem' : '1.25rem' }} /> : false;
 
   const { pathname } = useLocation();
   const isSelected = !!matchPath({ path: item.url, end: false }, pathname) || openItem === item.id;
@@ -42,8 +42,8 @@ export default function NavItem({ item, level }) {
     // eslint-disable-next-line
   }, [pathname]);
 
-  const textColor = 'text.primary';
-  const iconSelectedColor = 'primary.main';
+  const textColor = theme.palette.secondary[600];
+  const iconSelectedColor = theme.palette.primary[100];
 
   return (
     <ListItemButton
@@ -52,16 +52,19 @@ export default function NavItem({ item, level }) {
       onClick={() => handlerActiveItem(item.id)}
       selected={isSelected}
       sx={{
+        ml: '8px',
         zIndex: 1201,
-        pl: drawerOpen ? `${level * 28}px` : 1.5,
+        pl: drawerOpen ? `${level * 25}px` : 1.5,
         py: !drawerOpen && level === 1 ? 1.25 : 1,
         ...(drawerOpen && {
           '&:hover': {
-            bgcolor: 'primary.lighter'
+            bgcolor: 'primary.lighter',
+            color: theme.palette.primary[100],
+            borderRadius: '8px',
           },
           '&.Mui-selected': {
             bgcolor: 'primary.lighter',
-            borderRight: `2px solid ${theme.palette.primary.main}`,
+            borderRight: `2px solid ${theme.palette.primary[100]}`,
             color: iconSelectedColor,
             '&:hover': {
               color: iconSelectedColor,
@@ -112,7 +115,7 @@ export default function NavItem({ item, level }) {
       {(drawerOpen || (!drawerOpen && level !== 1)) && (
         <ListItemText
           primary={
-            <Typography variant="h6" sx={{ color: isSelected ? iconSelectedColor : textColor }}>
+            <Typography variant="h6" sx={{ fontWeight: 'bold', color: isSelected ? iconSelectedColor : textColor, marginLeft: '9px' }}>
               {item.title}
             </Typography>
           }
