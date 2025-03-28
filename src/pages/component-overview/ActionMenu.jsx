@@ -4,10 +4,13 @@ import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import { useTheme } from '@mui/material/styles';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import { Delete, Visibility } from '@mui/icons-material';
+import { useNavigate } from 'react-router';
+import PatientDetail from '../component/PatientDetail';
 
 const ActionMenu = ({ rowId }) => {
   const [anchorEl, setAnchorEl] = useState(null); // State to control menu visibility
   const theme = useTheme();
+  const Navigate=useNavigate();
 
   // Open the menu when the button is clicked
   const handleOpenMenu = (event) => {
@@ -21,7 +24,7 @@ const ActionMenu = ({ rowId }) => {
 
   // Handle Edit action
   const handleEdit = () => {
-    console.log('Edit patient with ID:', rowId);
+    Navigate(`/Patient-details/${rowId}`)
     handleCloseMenu(); // Close the menu after action
   };
 

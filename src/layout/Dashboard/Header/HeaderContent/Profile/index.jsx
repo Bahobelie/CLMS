@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // material-ui
 import { useTheme } from '@mui/material/styles';
@@ -29,6 +29,9 @@ import LogoutOutlined from '@ant-design/icons/LogoutOutlined';
 import SettingOutlined from '@ant-design/icons/SettingOutlined';
 import UserOutlined from '@ant-design/icons/UserOutlined';
 import avatar1 from 'assets/images/users/avatar-1.png';
+import { useDispatch, useSelector } from 'react-redux';
+import { LOGOUT } from '../../../../../contexts/auth-reducer/actions';
+import { useNavigate } from 'react-router';
 
 // tab panel wrapper
 function TabPanel({ children, value, index, ...other }) {
@@ -53,8 +56,36 @@ export default function Profile() {
 
   const anchorRef = useRef(null);
   const [open, setOpen] = useState(false);
+  const dispatch = useDispatch();
+  // Initialize navigate hook
+  const navigate = useNavigate();
+
+  // Get user from Redux state if userRole is null
+  let userFromRedux = useSelector((state) => state.auth.user);
+
+
+  const [user, setUser] = useState(userFromRedux);
+
+  useEffect(() => {
+    if (!userFromRedux) {
+      const userFromLocalStorage = localStorage.getItem('user');
+      if (userFromLocalStorage) {
+        setUser(JSON.parse(userFromLocalStorage)); // Parse string back into an object
+      }
+    }
+  }, [userFromRedux]);
+
   const handleToggle = () => {
     setOpen((prevOpen) => !prevOpen);
+  };
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    dispatch({
+      type: LOGOUT,
+      payload: {}
+    });
+    navigate('/login');
+
   };
 
   const handleClose = (event) => {
@@ -91,7 +122,7 @@ export default function Profile() {
         <Stack direction="row" spacing={1.25} alignItems="center" sx={{ p: 0.5 }}>
           <Avatar alt="profile user" src={avatar1} size="sm" />
           <Typography variant="subtitle1" sx={{ textTransform: 'capitalize' }}>
-            Admin
+            {user?.name}
           </Typography>
         </Stack>
       </ButtonBase>
@@ -124,16 +155,16 @@ export default function Profile() {
                         <Stack direction="row" spacing={1.25} alignItems="center">
                           <Avatar alt="profile user" src={avatar1} sx={{ width: 32, height: 32 }} />
                           <Stack>
-                            <Typography variant="h6">John Doe</Typography>
+                            <Typography variant="h6">{user?.name}</Typography>
                             <Typography variant="body2" color="text.secondary">
-                              UI/UX Designer
+                              {user?.role}
                             </Typography>
                           </Stack>
                         </Stack>
                       </Grid>
                       <Grid item>
                         <Tooltip title="Logout">
-                          <IconButton size="large" sx={{ color: 'text.primary' }}>
+                          <IconButton size="large" onClick={handleLogout} sx={{ color: 'text.primary' }}>
                             <LogoutOutlined />
                           </IconButton>
                         </Tooltip>

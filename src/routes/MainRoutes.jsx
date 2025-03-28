@@ -3,20 +3,22 @@ import { lazy } from 'react';
 // project import
 import Loadable from 'components/Loadable';
 import Dashboard from 'layout/Dashboard';
+import ProtectedRoute from './ProtectedRoute';
 
 const Patient = Loadable(lazy(() => import('pages/component/Patient')));
-const Typography = Loadable(lazy(() => import('pages/component-overview/typography')));
-const Shadow = Loadable(lazy(() => import('pages/component-overview/shadows')));
 const DashboardDefault = Loadable(lazy(() => import('pages/dashboard/index')));
-
-// render - sample page
-const SamplePage = Loadable(lazy(() => import('pages/extra-pages/sample-page')));
+const NotFound=Loadable(lazy(()=>import('./../pages/component/NotFoundView')));
+const PatientDetail=Loadable(lazy(()=>import('../pages/component/PatientDetail')));
 
 // ==============================|| MAIN ROUTING ||============================== //
 
 const MainRoutes = {
   path: '/',
-  element: <Dashboard />,
+  element: (
+    <ProtectedRoute>
+      <Dashboard />
+    </ProtectedRoute>
+  ),
   children: [
     {
       path: '/',
@@ -27,6 +29,14 @@ const MainRoutes = {
       element: <Patient />
     },
     {
+      path: 'Notfound',
+      element: <NotFound />
+    },
+    {
+      path: 'Patient-details/:id',
+      element: <PatientDetail />
+    },
+    {
       path: 'dashboard',
       children: [
         {
@@ -34,18 +44,6 @@ const MainRoutes = {
           element: <DashboardDefault />
         }
       ]
-    },
-    {
-      path: 'sample-page',
-      element: <SamplePage />
-    },
-    {
-      path: 'shadow',
-      element: <Shadow />
-    },
-    {
-      path: 'typography',
-      element: <Typography />
     }
   ]
 };

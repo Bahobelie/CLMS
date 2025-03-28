@@ -25,10 +25,10 @@ const LogoSection = ({ sx, to }) => {
         ...sx, // Merge additional styles passed via sx prop
       }}
     >
-      <Stack direction="row" spacing={1} alignItems="center">
+      <Stack direction="row" spacing={-.10} alignItems="center">
         <Logo />
         <Chip
-          label="CLMS"
+          label="TW-CLMS"
           sx={{
             alignItems: 'center',
             fontWeight: 'bold',

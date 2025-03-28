@@ -7,12 +7,28 @@ import Box from '@mui/material/Box';
 // project import
 import NavItem from './NavItem';
 import { useGetMenuMaster } from 'api/menu';
+import { useSelector } from 'react-redux';
 
 export default function NavGroup({ item }) {
   const { menuMaster } = useGetMenuMaster();
   const drawerOpen = menuMaster.isDashboardDrawerOpened;
 
-  const navCollapse = item.children?.map((menuItem) => {
+  // Get the user role from localStorage
+  let userRole = localStorage.getItem('userRole'); // Assuming the role is stored as 'userRole'
+
+  // Get user from Redux state if userRole is null
+  const user = useSelector((state) => state.auth.user);
+  if (!userRole && user) {
+    userRole = user.role;
+  }
+
+  // Filter menu items based on the user's role
+  const allowedMenuItems = item.children?.filter((menuItem) => {
+    return menuItem.roles?.toLocaleString().includes(userRole.toLowerCase()); // Only include items that match the user's role
+  });
+
+  // Map the allowed menu items
+  const navCollapse = allowedMenuItems?.map((menuItem) => {
     switch (menuItem.type) {
       case 'collapse':
         return (
@@ -21,7 +37,7 @@ export default function NavGroup({ item }) {
           </Typography>
         );
       case 'item':
-        return <NavItem key={menuItem.id} item={menuItem} level={1} />;
+        return <NavItem key={menuItem.id} item={menuItem} level={1} />; // Render each item as a NavItem
       default:
         return (
           <Typography key={menuItem.id} variant="h6" color="error" align="center">
@@ -40,7 +56,6 @@ export default function NavGroup({ item }) {
             <Typography variant="subtitle2" color="primary">
               {item.title}
             </Typography>
-            {/* only available in paid version */}
           </Box>
         )
       }

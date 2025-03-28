@@ -18,27 +18,26 @@ import { LiaDollarSignSolid } from 'react-icons/lia';
 import * as data from '../../data/Patinet';
 
 // project import
-import MainCard from 'components/MainCard';
-import AnalyticReport from 'components/cards/statistics/AnalyticReport';
 import MonthlyBarChart from './MonthlyBarChart';
 import ReportAreaChart from './ReportAreaChart';
 import UniqueVisitorCard from './UniqueVisitorCard';
 import SaleReportCard from './SaleReportCard';
-import OrdersTable from './OrdersTable';
+
 
 // assets
 import GiftOutlined from '@ant-design/icons/GiftOutlined';
 import MessageOutlined from '@ant-design/icons/MessageOutlined';
 import SettingOutlined from '@ant-design/icons/SettingOutlined';
-import avatar1 from 'assets/images/users/avatar-1.png';
-import avatar2 from 'assets/images/users/avatar-2.png';
-import avatar3 from 'assets/images/users/avatar-3.png';
-import avatar4 from 'assets/images/users/avatar-4.png';
+
 import { useTheme } from '@mui/material/styles';
 import BarChart from './Barchart';
-import IconButton from '@mui/material/IconButton';
 import { BsTelegram } from 'react-icons/bs';
-
+import AnalyticReport from '../../components/cards/statistics/AnalyticReport';
+import MainCard from '../../components/MainCard';
+import avatar1 from 'assets/images/users/avatar-1.png';
+import avatar2 from 'assets/images/users/avatar-2.png';
+import avatar3 from 'assets/images/users/avatar-1.png';
+import avatar4 from 'assets/images/users/avatar-2.png';
 // avatar style
 const avatarSX = {
   width: 36,
@@ -171,9 +170,9 @@ export default function DashboardDefault() {
           </Grid>
           <Grid item />
         </Grid>
-        <MainCard sx={{ mt: 2 }} content={false}>
-          <OrdersTable />
-        </MainCard>
+        {/*<MainCard sx={{ mt: 2 }} content={false}>*/}
+        {/*  <OrdersTable />*/}
+        {/*</MainCard>*/}
       </Grid>
       <Grid item xs={12} md={5} lg={4}>
         <Grid container alignItems="center" justifyContent="space-between">
