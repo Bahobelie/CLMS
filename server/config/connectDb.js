@@ -1,14 +1,37 @@
-const mongoose = require('mongoose');
-require('dotenv').config();
-const connectDb = async () => {
+const path = require('path');
+require('dotenv').config({path:path.resolve(__dirname,'..','.env')});
+const {Pool} = require('pg');
+
+// Debug: Check if env variables are loaded
+console.log('Environment Variables:', {
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD, // Mask password
+  database: process.env.DB_NAME
+});
+
+
+const pool = new Pool({
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  database: process.env.DB_DATABASE,
+
+});
+(async ()=>{
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
-
-    console.log("✅ MongoDB Connected");
-  } catch (err) {
-    console.error("❌ MongoDB Connection Error:", err);
-    process.exit(1); // Exit the process if connection fails
+    const res=await pool.query('SELECT NOW()');
+    console.log('✅ Database connected successfully!', res.rows[0]);
   }
-};
+  catch(err){
+  console.error('❌ Connection failed:', err);
+  }
+  finally {
+    await pool.end();
+  }
+})();
 
-module.exports= connectDb;
+module.exports= pool;
+

@@ -1,6 +1,6 @@
-import mongoose from 'mongoose';
-import SystemConstant from '../../models/SystemConstant.js';
 
+const SystemConstant=require('../../models/SystemConstant.js');
+const pool =require('../../config/connectDb');
 
 const detailedLabTests = {
   Hematology: {
@@ -84,9 +84,11 @@ const detailedLabTests = {
     }
   }
 };
+
 const seedData = async () => {
   try {
-    await mongoose.connect('mongodb://localhost:27017/TW-CLMS');
+    // Clear existing data (PostgreSQL syntax)
+    await pool.query(`DELETE FROM system_constants;`);
     console.log('Connected to MongoDB');
 
     await SystemConstant.deleteMany({});
@@ -105,7 +107,13 @@ const seedData = async () => {
       { code: 'SYC-00009', name: "Sonographer", type: 'Role', description: 'Sonographer', index: 9 },
     ];
 
-    await SystemConstant.insertMany(rolesAndServices);
+    // Insert roles (PostgreSQL syntax)
+    for (const item of rolesAndServices) {
+      await pool.query(
+        'INSERT INTO system_constants (code, name, type, description, index) VALUES ($1, $2, $3, $4, $5)',
+        [item.code, item.name, item.type, item.description, item.index]
+      );
+    }
     console.log('Roles and Services seeded.');
     let index = 10;
     for (const categoryName in detailedLabTests) {
@@ -157,11 +165,11 @@ const seedData = async () => {
         }
       }
     }
-    mongoose.connection.close();
+    pool.end();
     console.log('Seeding completed successfully!');
   } catch (error) {
     console.error('Error seeding data:', error);
-    mongoose.connection.close();
+    pool.end();
   }
 };
 seedData();
