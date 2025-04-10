@@ -24,7 +24,12 @@ import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import ServiceModal from '../component-overview/ServiceModal';
+import FormHelperText from '@mui/material/FormHelperText';
+import { date } from 'yup';
 
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 
 // ========================================== Patient List ===================================//
 
@@ -41,12 +46,12 @@ const Patient = () => {
     middleName: '',
     lastName: '',
     gender: '',
-    age: '',
+    DateOfBirth: '',
     bloodGroup: '',
     BP: '',
     BMI: '',
     districtState: '',
-    contactInfo: '',
+    phoneNumber: '',
     applicationFee: '',
     services: []
   });
@@ -94,14 +99,16 @@ const Patient = () => {
 
   const validationSchema = Yup.object({
     firstName: Yup.string().required("First Name is required"),
-    middleName: Yup.string().required("Middle Name is required"),
-    lastName: Yup.string(),
+    middleName: Yup.string(),
+    lastName: Yup.string().required("Last Name is required"),
     gender: Yup.string().required("Gender is required"),
-    age: Yup.number().positive().integer().required("Age is required"),
+    dateOfbirth: Yup.number().positive().integer().required("dateOfbirth is required"),
     bloodGroup: Yup.string().required("Blood Group is required"),
     bmiTest: Yup.string().required("BMI Test is required"),
     bloodPressureTest: Yup.string().required("Blood Pressure Test is required"),
     selectDistrict: Yup.string().required("District is required"),
+    phoneNumber:Yup.string(),
+    BloodPressure:Yup.string(),
     applicationFee: Yup.string().required("Application Fee is required"),
   });
 
@@ -141,16 +148,26 @@ const Patient = () => {
   const data = {
     columns: [
       { field: 'id', headerName: 'ID', width: 90, flex: 1 },
+      { field: 'code', headerName: 'Code', width: 90, flex: 1 },
+
       { field: 'fullName', headerName: 'Full Name', width: 200, flex: 1 },
       { field: 'gender', headerName: 'Gender', width: 120, flex: 1 },
       { field: 'age', headerName: 'Age', type: 'number', width: 110, flex: 1 },
       { field: 'bloodGroup', headerName: 'Blood Group', width: 120, flex: 1 },
-      { field: 'disease', headerName: 'Disease', width: 180, flex: 1 },
       { field: 'country', headerName: 'Country', width: 150, flex: 1 },
       { field: 'district', headerName: 'District', width: 150, flex: 1 },
       { field: 'contactInfo', headerName: 'Contact Info', width: 150, flex: 1 },
-      { field: 'admissionDate', headerName: 'Admission Date', width: 180, flex: 1 },
-      { field: 'applicationFee', headerName: 'Application Fee', width: 150, flex: 1 },
+      { field: 'admissionDate', headerName: 'Admission Date', width: 180, flex: 2 },
+      {
+        field: 'applicationFee',
+        headerName: 'Application Fee',
+        width: 150,
+        renderCell: (params) => (
+          <span style={{ color: 'green', fontWeight: 'bold' }}>
+          {params.value !== 'N/A' ? `₦ ${params.value}` : 'N/A'}
+        </span>
+        ),
+      },,
       {
         field: 'actions',
         headerName: 'Actions',
@@ -159,17 +176,17 @@ const Patient = () => {
       },
     ],
     rows: patients.map((patient) => ({
-      id: patient._id,
-      fullName: `${patient.firstName || 'N/A'} ${patient.middleName || 'N/A'} ${patient.lastName || 'N/A'}`,
+      id: patient.id,
+      code:patient.code,
+      fullName: `${patient.first_name || 'N/A'} ${patient.middle_name || 'N/A'} ${patient.last_name || 'N/A'}`,
       gender: patient.gender || 'N/A',
-      age: patient.age || 'N/A',
-      bloodGroup: patient.bloodGroup || 'N/A',
-      disease: patient.disease || 'N/A',
+      dateOfbirth: patient.date_of_birth || 'N/A',
+      bloodGroup: patient.blood_group || 'N/A',
       country: patient.country || 'N/A',
-      district: patient.districtState || 'N/A',
-      contactInfo: patient.contactInfo || 'N/A',
+      district: patient.district_state || 'N/A',
+      contactInfo: patient.phone_number || 'N/A',
       admissionDate: patient.createdAt || 'N/A',
-      applicationFee: patient.applicationFee || 'N/A',
+      applicationFee: patient.application_fee || 'N/A',
     })),
   };
 
@@ -200,7 +217,7 @@ const Patient = () => {
           initialState={{
           pagination:{
             paginationModel:{
-              pageSize:10
+              pageSize:12
             }}
 
           }}
@@ -241,7 +258,7 @@ const Patient = () => {
           sx={{
             position: 'absolute',
             top: '20%',
-            left: '40%',
+            left: '30%',
             transform: 'translate(-50%, -50%)',
             width: 650,
             bgcolor: 'background.paper',
@@ -272,7 +289,7 @@ const Patient = () => {
               handleSubmit(values);
             }}
           >
-            {({ handleChange, values }) => (
+            {({ handleChange, values,errors,touched }) => (
               <Form>
                 <Grid container spacing={2} sx={{ mt: 2 }}>
                   <Grid item xs={12} sm={6}>
@@ -285,27 +302,30 @@ const Patient = () => {
                       onChange={handleChange}
                       value={values.firstName}
                       error={touched.firstName && Boolean(errors.firstName)}
-                      helperText={
-                        <ErrorMessage name="firstName">
-                          {(msg) => <FormHelperText sx={{ color: 'red' }}>{msg}</FormHelperText>}
-                        </ErrorMessage>
-                      }
+                      helperText={<ErrorMessage name='firstName' /> }
                         />
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <Field
                       as={TextField}
                       fullWidth
-                      required
                       label="Middle Name"
                       name="middleName"
                       onChange={handleChange}
                       value={values.middleName}
-                      helperText={<ErrorMessage name="middleName" />}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <Field as={TextField} fullWidth label="Last Name" name="lastName" />
+                    <Field
+                      as={TextField}
+                      fullWidth
+                      required
+                      label="Last Name"
+                      value={values.lastName}
+                      name="lastName"
+                      error={touched.lastName && Boolean(errors.lastName)}
+                      helperText={<ErrorMessage name='lastName' /> }
+                    />
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <Field
@@ -315,6 +335,7 @@ const Patient = () => {
                       name="gender"
                       select
                       SelectProps={{ native: true }}
+                      error={touched.gender && Boolean(errors.gender)}
                       helperText={<ErrorMessage sx={{color:'red'}} name="gender" />}
                     >
                       <option value="" disabled>
@@ -328,13 +349,29 @@ const Patient = () => {
                     <Field
                       as={TextField}
                       fullWidth
-                      label="Age"
-                      name="age"
-                      type="number"
-                      onChange={handleChange}
-                      value={values.age}
-                      helperText={<ErrorMessage name="age" />}
+                      label="PhoneNumber"
+                      value={values.phoneNumber}
+                      name="phoneNumber"
                     />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <LocalizationProvider dateAdapter={AdapterDateFns}>
+                      <DateTimePicker
+                        fullwidth
+                        label="Date of Birth"
+                        value={values.date_of_birth}
+                        onChange={(value) => setFieldValue('date_of_birth', value)}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            fullWidth
+                            name="date_of_birth"
+                            error={Boolean(errors.date_of_birth && touched.date_of_birth)}
+                            helperText={<ErrorMessage name="date_of_birth" />}
+                          />
+                        )}
+                      />
+                    </LocalizationProvider>
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <Field
@@ -381,6 +418,21 @@ const Patient = () => {
                   <Grid item xs={12} sm={6}>
                     <Field
                       as={TextField}
+                      fullWidth
+                      name="BloodPressure"
+                      select
+                      SelectProps={{ native: true }}
+                    >
+                      <option value="" disabled>
+                        BloodPressure
+                      </option>
+                      <option value="No">No</option>
+                      <option value="Yest">Yes</option>
+                    </Field>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Field
+                      as={TextField}
                       required
                       fullWidth
                       name="selectDistrict"
@@ -403,7 +455,12 @@ const Patient = () => {
                 </Grid>
 
                 {/* Buttons */}
-                <Button variant="contained" sx={{ mt: 3,backgroundColor:theme.palette.primary[100],':hover':{backgroundColor:theme.palette.primary[100]}}} startIcon={<MedicationLiquidIcon />}>
+                <Button variant="contained"
+                        sx={{ mt: 3,backgroundColor:theme.palette.primary[100],
+                          ':hover':{backgroundColor:theme.palette.primary[100]}}}
+                        startIcon={<MedicationLiquidIcon />}
+                        onClick={handleServiceModalOpen}
+                >
                   Add Services
                 </Button>
                 <Button

@@ -1,37 +1,31 @@
-const path = require('path');
-require('dotenv').config({path:path.resolve(__dirname,'..','.env')});
-const {Pool} = require('pg');
+const {Sequelize} = require('sequelize');
+require('dotenv').config({path:__dirname+'/../.env'});
 
-// Debug: Check if env variables are loaded
-console.log('Environment Variables:', {
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD, // Mask password
-  database: process.env.DB_NAME
-});
+// console.log("Environmental Variables",{
+//   Username: process.env.DB_USERNAME,
+//   Password: process.env.DATABASE_PASSWORD,
+//   address: process.env.DATABASE_PORT,
+//   host: process.env.DATABASE_URL,
+//   database: process.env.DB_NAME,
+//
+// });
 
+const sequelize = new Sequelize(
+    process.env.DB_NAME,
+    process.env.DATABASE_USERNAME,
+    process.env.DATABASE_PASSWORD,
+    {
+      host: process.env.DATABASE_URL,
+      dialect: 'postgres',
+      port: process.env.DATABASE_PORT
+    }
+);
 
-const pool = new Pool({
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  database: process.env.DB_DATABASE,
+sequelize.authenticate().then(()=>{
+  console.log('✅ Database connected successfully!');
+}).catch((err)=>{
+  console.error('❌ Connection failed:', err.message);
+})
 
-});
-(async ()=>{
-  try {
-    const res=await pool.query('SELECT NOW()');
-    console.log('✅ Database connected successfully!', res.rows[0]);
-  }
-  catch(err){
-  console.error('❌ Connection failed:', err);
-  }
-  finally {
-    await pool.end();
-  }
-})();
-
-module.exports= pool;
+module.exports= sequelize;
 

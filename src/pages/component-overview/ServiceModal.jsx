@@ -45,8 +45,8 @@ const ServiceModal = ({
           maxWidth: '95vw',
         }}
       >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6">Add Services</Typography>
+        <Box sx={{ display: 'flex',p:1,borderBottom: '2px solid', borderColor: theme.palette.primary[100], justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6" sx={{textAlign:'center'}}>Add Services</Typography>
           <Button sx={{border:`1px solid ${theme.palette.primary[100]}` }} variant='outlined' onClick={handleServiceModalClose} aria-label="close">
             <CloseIcon style={{color:'red'}} />
           </Button>

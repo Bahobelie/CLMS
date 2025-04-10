@@ -1,21 +1,44 @@
-const mongoose = require('mongoose');
-const generateNextId = require('../services/generateNextId.js');
-const { model, Schema, Mongoose } = require('mongoose');
+const { Sequelize, DataTypes } = require('sequelize');
+const sequelize = require('../config/connectDb');
+const generateNextId = require("../services/generateNextId");  // Ensure your Sequelize instance is properly configured
 
-const UltarSound= new Schema({
-        cod:{type:String,required: true,unique:true},
-        patientId:{type:Schema.Types.ObjectId,ref:"Patient",required:true},
-        imageUrl:{type:String,required:false},
-        description:{type:String,required:false},
-        remark:{type:String,required:false},
-},
-  {timestamps:true,toJSON:{virtuals:true},toObject:{virtuals:true}}
-);
-UltarSound.pre("save",async function(next){
-        if(!this.code){
-                this.code=await generateNextId(Mongoose.Model("UltarSound"),"ULS-");
+const Ultrasound = sequelize.define('Ultrasound', {
+        code: {
+                type: DataTypes.STRING,
+                allowNull: false,
+                unique: true,
+                defaultValue: null,  // This will be auto-generated
+        },
+        patientId: {
+                type: DataTypes.INTEGER,  // Assuming Patient ID is an integer
+                allowNull: false,
+                references: {
+                        model: 'Patients',  // Ensure the 'Patients' table is defined elsewhere
+                        key: 'id',
+                },
+        },
+        imageUrl: {
+                type: DataTypes.STRING,
+                allowNull: true,
+        },
+        description: {
+                type: DataTypes.STRING,
+                allowNull: true,
+        },
+        remark: {
+                type: DataTypes.STRING,
+                allowNull: true,
+        },
+}, {
+        timestamps: true,  // Automatically handles createdAt and updatedAt
+        tableName: 'ultrasounds',  // Custom table name if needed
+});
+
+// Hook to set the code before creating an Ultrasound record
+Ultrasound.beforeCreate(async (ultrasound, options) => {
+        if (!ultrasound.code) {
+                ultrasound.code = await generateNextId(ultrasound, 'US-');
         }
-        next();
-})
+});
 
-module.exports= model("Ultrasound",UltarSound);
+module.exports = Ultrasound;

@@ -6,10 +6,16 @@ class PrescriptionService extends CrudService {
   }
   async create(data) {
 
-    const { patientId } = data;
+    const { patientId ,code} = data;
     if (!patientId)
       throw new Error("Patient ID is required");
 
+    const existingLabTest = await this.model.findOne({
+      where: { code },
+    });
+    if (existingLabTest) {
+      throw new Error("Prescription code already exists");
+    }
     return super.create(data);
   };
 }

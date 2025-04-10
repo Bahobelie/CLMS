@@ -77,7 +77,9 @@ class crudControllr {
   }
     findByCondition = async (req, res) => {
       try {
-        const condition = req.body; // Assuming condition is passed in parameter
+        const condition = req.query; // Assuming condition is passed in parameter
+
+        console.log('condition',condition)
         const items = await this.service.findByCondition(condition);
 
         if (!items || items.length === 0) {

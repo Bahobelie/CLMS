@@ -1,32 +1,75 @@
-const mongoose = require('mongoose');
-const generateNextId = require('../services/generateNextId.js');
-const { model, Schema } = require('mongoose');
+const { Sequelize, DataTypes } = require('sequelize');
+const sequelize = require('../config/connectDb'); // Your Sequelize instance
+const generateNextId = require('../services/generateNextId'); // Import the generateNextId method
 
+// Define the SystemConstants model
+const SystemConstants = sequelize.define('SystemConstant', {
+  code: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true,
+  },
+  name: {
+    type: DataTypes.STRING,
+    allowNull: true, // Nullable
+    defaultValue: null,
+  },
+  type: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  description: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  index: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 0,
+  },
+  parentId: {
+    type: DataTypes.INTEGER,
+    references: {
+      model: 'SystemConstants', // Refers to the same table (self-referencing)
+      key: 'id',
+    },
+    allowNull: true, // Nullable (for self-referencing)
+  },
+  referencerange: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: null,
+  },
+  isActive: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true,
+    defaultValue: true,
+  },
+  amount: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+    defaultValue: 0,
+  },
+  remark: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: null,
+  },
+  status: {
+    type: DataTypes.STRING,
+    allowNull: true, // Nullable field added
+    defaultValue: null, // Can be set to null initially
+  },
+}, {
+  timestamps: true,
+  tableName: 'system_constants', // Name of the table
+});
 
-// ============================ System Constant Modal ================================//
-
-const SystemConstants = new Schema({
-  code:{type: String, required: [true,"please Provide Code"]},
-  name:{type: String, required:false,default:null},
-  type:{type: String, required: true},
-  description:{type: String, required: true},
-  index:{type: Number,required: false, default:0},
-  parentId:{type: Schema.Types.ObjectId, ref:'SystemConstant',required:false},
-  referenceRange:{type:String,default:null},
-  isActive:{type: Boolean, default: true},
-  amount:{type: Number, default:0,required:false},
-  remark:{type:String,required:false,default:null},
-},
-  {
-    timestamps: true,
-    toJSON: {virtuals: true},
-    toObject: {virtuals: true},
+// Before creating a SystemConstant record, we will set the code if it's null
+SystemConstants.beforeCreate(async (systemConstant) => {
+  if (!systemConstant.code) {
+    systemConstant.code = await generateNextId(SystemConstants, 'SYC-');
   }
-);
-SystemConstants.pre("save",async function (next) {
-  if (!this.code) {
-    this.code=await generateNextId(mongoose.Model("SystemConstant"),"SYC-");
-  }
-  next();
-})
-module.exports= mongoose.model("SystemConstant", SystemConstants);
+});
+
+module.exports = SystemConstants;

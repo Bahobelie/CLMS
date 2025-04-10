@@ -1,33 +1,79 @@
-const mongoose = require("mongoose");
-const { Types } = require('mongoose');
-const generateNextId = require('../services/generateNextId.js');
-const { model, Schema } = require('mongoose');
+const { Sequelize, DataTypes } = require('sequelize');
+const generateNextId = require('../services/generateNextId');
+const sequelize = require('../config/connectDb'); // Assuming you have a sequelize instance
 
-// ====================================LabTest Model =======================================//
+// LabTest model definition
+const LabTest = sequelize.define('LabTest', {
+  code: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true,
+  },
+  patientid: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'patients', // Name of the Patient table
+      key: 'id', // Column name in the patients table
+    },
+    onUpdate: 'CASCADE',
+    onDelete: 'SET NULL', // In case the patient is deleted, set patientid to NULL
+  },
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  description: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  price: {
+    type: DataTypes.NUMBER,
+    allowNull: false,
+  },
+  estimatedtimeinhours: {
+    type: DataTypes.NUMBER,
+    allowNull: true, // Time to get results (can be null)
+  },
+  isactive: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+  },
+  result: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: null,
+  },
+  referencerange: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  status: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    validate: {
+      isIn: [['pending', 'complete','Canceled']],
+    },
+  },
+  remark: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+}, {
+  timestamps: true,
+  tableName: 'lab_tests', // Table name in the database
+});
 
-const LabTestSchema = new mongoose.Schema({
-  code:{type:String,unique:true},
-  name: { type: String, required: true },
-  description: { type: String },
-  price: { type: Number, required: true },
-  estimatedTimeInHours: { type: Number, required: false }, // Time to get results
-  isActive: { type: Boolean, default: true },
-  patientId:{type:Types.ObjectId, ref: "Patient",required: true,default: null },
-  result:{type:String,required:false,default:null},
-  referenceRange:{type:String, required: false },
-  status:{type:String, enum:["pending","complete"],required:false},
-  remark:{type:String,required:false},
-},
-  {
-    timestamps: true,
-    toJSON: {virtuals: true},
-    toObject: {virtuals: true},
+// Before creating a LabTest, set code if it's null
+LabTest.beforeCreate(async (labTest) => {
+  if (!labTest.code) {
+    labTest.code = await generateNextId(LabTest, 'LT-');
   }
-);
-LabTestSchema.pre("save",async function (next) {
-  if (!this.code) {
-    this.code=await generateNextId(mongoose.model("LabTest"),"LT-");
-  }
-  next();
-})
-module.exports = mongoose.model("LabTest", LabTestSchema);
+});
+
+// Sync the model with the database (optional, based on your setup)
+sequelize.sync()
+    .then(() => console.log('LabTest table synced'))
+    .catch((err) => console.error('Error syncing table:', err));
+
+module.exports = LabTest;

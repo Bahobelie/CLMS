@@ -6,10 +6,16 @@ class SystemConstantService extends CrudService {
   }
   async create(data) {
 
-    const { parentId } = data;
+    const { parentId ,code} = data;
     if (!parentId)
       throw new Error("Patient ID is required");
 
+    const existingLabTest = await this.model.findOne({
+      where: { code },
+    });
+    if (existingLabTest) {
+      throw new Error("systemConstant code already exists");
+    }
     return super.create(data);
   };
 }

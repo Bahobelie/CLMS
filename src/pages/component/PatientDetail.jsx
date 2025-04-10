@@ -22,8 +22,10 @@ const PatientDetail = () => {
   useEffect(() => {
     const fetchPatient = async () => {
       try {
-        const response = await axios.get(`${apiUrl}/patients/patient/${id}`);
-        setPatient(response.data.data);
+        const response = await axios.get(`${apiUrl}/patients/by-condition?id=${id}`);
+        setPatient(response.data[0]);
+        // console.log(response.data[0]);
+
       } catch (error) {
         console.error('Error fetching patient details:', error);
       } finally {
@@ -79,7 +81,7 @@ const PatientDetail = () => {
                 }}
                 startIcon={<IoMdArrowRoundBack />}
         />
-        <Typography>{patient.firstName + ' ' + (patient.middleName ? patient.middleName + ' ' : '') + patient.lastName}</Typography>
+        <Typography>{patient.first_name + ' ' + (patient.middle_name ? patient.middle_name + ' ' : '') + patient.last_name}</Typography>
       </div>
       <Grid container spacing={3} sx={{ margin: '20px 12px' }}>
         {/* Left Side: Avatar + Vertical Tabs */}
@@ -94,8 +96,8 @@ const PatientDetail = () => {
                 src={defaultAvater}
                 sx={{ width: 80, height: 80, mb: 2 }}
               />
-              <h4>{patient.firstName}</h4>
-              <span>{patient?.email}</span>
+              <h4>{patient.first_name}</h4>
+              {/*<span>{patient?.email}</span>*/}
               <h6>{patient?.contactInfo}</h6>
               <Divider/>
               <Tabs
@@ -155,8 +157,8 @@ const PatientDetail = () => {
                 )}
                 {tabIndex === 1 && (
                   <>
-                    <Typography><strong>Blood Group:</strong> {patient.bloodGroup}</Typography>
-                    <Typography><strong>Contact Info:</strong> {patient.contactInfo}</Typography>
+                    <Typography><strong>Blood Group:</strong> {patient.blood_group}</Typography>
+                    <Typography><strong>Contact Info:</strong> {patient.phone_number}</Typography>
                   </>
                 )}
                 {tabIndex === 2 && (

@@ -1,6 +1,5 @@
-
-const SystemConstant=require('../../models/SystemConstant.js');
-const pool =require('../../config/connectDb');
+const SystemConstant = require('../../models/SystemConstant.js');
+const sequelize = require('../../config/connectDb'); // Assuming this is your Sequelize instance
 
 const detailedLabTests = {
   Hematology: {
@@ -21,8 +20,8 @@ const detailedLabTests = {
     },
     ESR: { name: "Erythrocyte Sedimentation Rate (ESR)", range: "Male: 0 - 15 mm/hr, Female: 0 - 20 mm/hr" },
     ReticulocyteCount: { name: "Reticulocyte Count", range: "0.5 - 2.5%" },
-    BloodGroup: {name:"BloodGroup",range:"A, B, AB, O (+/-)"},
-    PeripheralBloodSmear: {name:"Peripheral Blood Smear",range:"Normal morphology"},
+    BloodGroup: { name: "Blood Group", range: "A, B, AB, O (+/-)" },
+    PeripheralBloodSmear: { name: "Peripheral Blood Smear", range: "Normal morphology" },
   },
   Chemistry: {
     RFT: {
@@ -84,14 +83,11 @@ const detailedLabTests = {
     }
   }
 };
-
 const seedData = async () => {
+  const transaction = await sequelize.transaction();
   try {
-    // Clear existing data (PostgreSQL syntax)
-    await pool.query(`DELETE FROM system_constants;`);
-    console.log('Connected to MongoDB');
-
-    await SystemConstant.deleteMany({});
+    // Clear existing data using Sequelize
+    await SystemConstant.destroy({ where: {}, truncate: true, transaction });
     console.log('Existing data cleared');
 
     // Seed Roles and Services
@@ -99,77 +95,82 @@ const seedData = async () => {
       { code: 'SYC-000001', name: "Injection", type: 'Service', description: 'Injection', index: 1 },
       { code: 'SYC-000002', name: "UltraSound", type: 'Service', description: 'UltraSound', index: 2 },
       { code: 'SYC-000003', name: "Admin", type: 'Role', description: 'Admin', index: 3 },
-      { code: 'SYC-00004', name: "Doctor", type: 'Role', description: 'Doctor', index: 4 },
-      { code: 'SYC-00005', name: "Emergency", type: 'Role', description: 'emergency', index: 3 },
-      { code: 'SYC-00006', name: "Receptionist", type: 'Role', description: 'Receptionist', index: 6 },
-      { code: 'SYC-00007', name: "LabTechnician", type: 'Role', description: 'LabTechnician', index: 7 },
-      { code: 'SYC-00008', name: "InjectionRoomStaff", type: 'Role', description: 'InjectionRoomStaff', index: 8 },
-      { code: 'SYC-00009', name: "Sonographer", type: 'Role', description: 'Sonographer', index: 9 },
+      { code: 'SYC-000004', name: "Doctor", type: 'Role', description: 'Doctor', index: 4 },
+      { code: 'SYC-000005', name: "Emergency", type: 'Role', description: 'emergency', index: 5 },
+      { code: 'SYC-000006', name: "Receptionist", type: 'Role', description: 'Receptionist', index: 6 },
+      { code: 'SYC-000007', name: "LabTechnician", type: 'Role', description: 'LabTechnician', index: 7 },
+      { code: 'SYC-000008', name: "InjectionRoomStaff", type: 'Role', description: 'InjectionRoomStaff', index: 8 },
+      { code: 'SYC-000009', name: "Sonographer", type: 'Role', description: 'Sonographer', index: 9 },
     ];
 
-    // Insert roles (PostgreSQL syntax)
-    for (const item of rolesAndServices) {
-      await pool.query(
-        'INSERT INTO system_constants (code, name, type, description, index) VALUES ($1, $2, $3, $4, $5)',
-        [item.code, item.name, item.type, item.description, item.index]
-      );
-    }
+    // Insert roles using Sequelize bulkCreate
+    await SystemConstant.bulkCreate(rolesAndServices, { transaction });
     console.log('Roles and Services seeded.');
+
     let index = 10;
-    for (const categoryName in detailedLabTests) {
-      if (detailedLabTests.hasOwnProperty(categoryName)) {
-        const categoryData = detailedLabTests[categoryName];
-        const category = await SystemConstant.create({
-          code: `SYC-${String(index).padStart(6, '0')}`,
-          name: categoryName,
-          type: 'LabTest',
-          description: categoryName,
-          index: index,
-        });
-        console.log(`Category seeded: ${categoryName}`);
-        index++;
+    for (const [categoryName, categoryData] of Object.entries(detailedLabTests)) {
+      const category = await SystemConstant.create({
+        code: `SYC-${String(index).padStart(6, '0')}`,
+        name: categoryName,
+        type: 'LabTest',
+        description: categoryName,
+        index: index,
+      }, { transaction });
+      console.log(`Category seeded: ${categoryName}`);
+      index++;
 
-        if (typeof categoryData === 'object' && categoryData !== null) {
-          for (const subcategoryName in categoryData) {
-            if (categoryData.hasOwnProperty(subcategoryName)) {
-              const subcategory = await SystemConstant.create({
-                code: `SYC-${String(index).padStart(6, '0')}`,
-                name: subcategoryName,
-                type: 'LabTest',
-                description: subcategoryName,
-                index: index,
-                parentId: category._id, // Use category._id (ObjectId)
-              });
-              console.log(`Subcategory seeded: ${subcategoryName} under ${categoryName}`);
-              index++;
+      for (const [subcategoryName, subcategoryData] of Object.entries(categoryData)) {
+        // Check if this is a nested object with name/range or another level of hierarchy
+        if (subcategoryData.name && subcategoryData.range) {
+          // This is a direct test (like ESR)
+          await SystemConstant.create({
+            code: `SYC-${String(index).padStart(6, '0')}`,
+            name: subcategoryName,
+            type: 'LabTest',
+            description: subcategoryData.name,
+            index: index,
+            parentId: category.id,
+            referencerange: subcategoryData.range
+          }, { transaction });
+          console.log(`Test seeded: ${subcategoryName} under ${categoryName}`);
+          index++;
+        } else {
+          // This is a subcategory (like CBC)
+          const subcategory = await SystemConstant.create({
+            code: `SYC-${String(index).padStart(6, '0')}`,
+            name: subcategoryName,
+            type: 'LabTest',
+            description: subcategoryName,
+            index: index,
+            parentId: category.id,
+          }, { transaction });
+          console.log(`Subcategory seeded: ${subcategoryName} under ${categoryName}`);
+          index++;
 
-              if (typeof categoryData[subcategoryName] === 'object' && !categoryData[subcategoryName].range) {
-                for (const detailName in categoryData[subcategoryName]) {
-                  if (categoryData[subcategoryName].hasOwnProperty(detailName)) {
-                    await SystemConstant.create({
-                      code: `SYC-${String(index).padStart(6, '0')}`,
-                      name: detailName,
-                      type: 'LabTest',
-                      description: categoryData[subcategoryName][detailName].name,
-                      index: index,
-                      parentId: subcategory._id, // Use subcategory._id (ObjectId)
-                      referenceRange:categoryData[subcategoryName][detailName].range
-                    });
-                    console.log(`Detail seeded: ${detailName} under ${subcategoryName}`);
-                    index++;
-                  }
-                }
-              }
-            }
+          // Handle the tests within the subcategory
+          for (const [testName, testData] of Object.entries(subcategoryData)) {
+            await SystemConstant.create({
+              code: `SYC-${String(index).padStart(6, '0')}`,
+              name: testName,
+              type: 'LabTest',
+              description: testData.name,
+              index: index,
+              parentId: subcategory.id,
+              referencerange: testData.range
+            }, { transaction });
+            console.log(`Test seeded: ${testName} under ${subcategoryName}`);
+            index++;
           }
         }
       }
     }
-    pool.end();
+
+    await transaction.commit();
     console.log('Seeding completed successfully!');
   } catch (error) {
-    console.error('Error seeding data:', error);
-    pool.end();
+    await transaction.rollback();
+    console.error('Error seeding data:', error.message);
   }
 };
-seedData();
+
+seedData().catch(error => console.error('Error in seedData:', error));

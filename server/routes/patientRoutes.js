@@ -1,13 +1,14 @@
 const express = require('express');
 const  Patient  = require('../models/patientSchema.js');
-const  CrudService  = require('../services/CrudService.js');
+const  PatientService  = require('../services/patient/patientService');
 const CrudController  = require('../controllers/crudControllr.js');
 
 
-const PatientService = new CrudService(Patient);
-const PatientController = new CrudController(PatientService);
+const patientService = new PatientService(Patient);
+const PatientController = new CrudController(patientService);
 
 const router = express.Router();
+router.get('/by-condition',PatientController.findByCondition);
 
 router.get('/', PatientController.getAll);
 router.get('/:id', PatientController.getById);

@@ -37,6 +37,10 @@ const MainRoutes = {
       element: <PatientDetail />
     },
     {
+      path:'*',
+      element: <NotFound />
+    },
+    {
       path: 'dashboard',
       children: [
         {

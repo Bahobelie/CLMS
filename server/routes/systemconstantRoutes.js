@@ -9,7 +9,7 @@ const SystemConstantController = new CrudController(SystemConstantService);
 
 const router = express.Router();
 
-router.post('/by-condition',SystemConstantController.findByCondition);
+router.get('/by-condition',SystemConstantController.findByCondition);
 
 router.get('/', SystemConstantController.getAll);
 router.get('/:id', SystemConstantController.getById);

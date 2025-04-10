@@ -1,46 +1,108 @@
+const { Sequelize, DataTypes } = require('sequelize');
+const sequelize = require('../config/database'); // Your sequelize instance
+const generateNextId = require('../services/generateNextId'); // Import the generateNextId method
+const Patient = require('./Patient'); // Import the Patient model
 
-const mongoose = require('mongoose');
-const {Model,Schema, Mongoose } = require('mongoose');
-const generateNextId=require('./../services/generateNextId');
+// Prescription model definition
+const Prescription = sequelize.define('Prescription', {
+  code: {
+    type: DataTypes.STRING,
+    unique: true,
+    allowNull: false,
+  },
+  clinicName: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  patientName: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  age: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  weight: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  cardNo: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  region: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  town: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  gender: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  woreda: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  kebele: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  tel: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  dx: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  prscriberName: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  prescriberQualification: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  dispenserName: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  price: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+  },
+  totalPrice: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+  },
+  patientId: {
+    type: DataTypes.INTEGER,
+    references: {
+      model: Patient, // Referring to the Patient model
+      key: 'id', // Assuming 'id' is the primary key of the Patient model
+    },
+    allowNull: false,
+  },
+  dynamicFields: {
+    type: DataTypes.JSONB, // Store dynamic fields as a JSON array
+    defaultValue: null,
+  },
+}, {
+  timestamps: true,
+  tableName: 'prescriptions',
+});
 
-const Prescription = new Schema({
-  code:{type:String,unique:true},
-  clinicName:{type:String,require:true},
-  patientName: {type:String,require:true},
-  age:{type:Number,require:false},
-  weight:{type:Number,require:false},
-  cardNo:{type:String,require:true},
-  region:{type:String,require:false},
-  town:{type:String,require:false},
-  gender:{type:String,require:false},
-  woreda:{type:String,require:false},
-  kebele:{type:String,require:false},
-  tel:{type:Number,require:false},
-  dx:{type:Number,require:false},
-  prscriberName:{type:String,require:false},
-  prescriberQualification:{type:String,require:false},
-  dispenserName:{type:String,require:false},
-  price:{type:Number,require:false},
-  totalPrice:{type:Number,require:false},
-patientId:{type:Mongoose.Schema.Types.ObjectId,ref:"Patient",required:true},
-  dynamicFields:{
-    type:[
-      {
-        name:String,
-        value:String,
-      }
-    ],
-    default:null
+// Before creating a prescription record, we will set the code if it's null
+Prescription.beforeCreate(async (prescription) => {
+  if (!prescription.code) {
+    prescription.code = await generateNextId(Prescription, 'PR-');
   }
-},
-  {
-    timestamps:true,
-    toJSON:true,
-    toObject:true
-  }
-);
-Prescription.pre("save",async function(next){
-  if(!this.code)
-    this.code=await generateNextId(mongoose.model("Prescription"),("PR-"))
-})
-module.exports=Prescription;
+});
+
+// Set the association with the Patient model
+Prescription.belongsTo(Patient, { foreignKey: 'patientId' });
+
+module.exports = Prescription;

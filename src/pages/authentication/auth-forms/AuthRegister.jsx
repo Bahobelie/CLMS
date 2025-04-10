@@ -37,8 +37,10 @@ export default function AuthRegister() {
 
   const getAllRoles = async () => {
     try {
-      const response = await axios.post(`${import.meta.env.VITE_APP_API_URL}/systemConstants/by-condition`, {
-        type: "Role"
+      const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/systemConstants/by-condition`, {
+        params:{
+          type: "Role"
+        }
       });
 
       if (response.status === 200) {
@@ -48,8 +50,6 @@ export default function AuthRegister() {
       console.error("Error fetching roles:", error);
     }
   };
-
-
 
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
@@ -62,9 +62,12 @@ export default function AuthRegister() {
   const changePassword = (value) => {
     const temp = strengthIndicator(value);
   };
-  useEffect(() => {
-    changePassword('');
-    getAllRoles();
+  useEffect(  () => {
+    const fetchData = async () => {
+      changePassword(''); // Call synchronous function
+      await getAllRoles(); // Await async function
+    };
+    fetchData();
   }, []);
 
   return (
@@ -81,7 +84,7 @@ export default function AuthRegister() {
         validationSchema={Yup.object().shape({
           fullName: Yup.string().max(255).required('Full Name is required'),
           phoneNumber: Yup.string()
-            .max(255)
+            .max(13)
             .min(10)
             .required('Phone Number is required'),
           email: Yup.string().email('Must be a valid email').max(255).required('Email is required'),
@@ -92,6 +95,8 @@ export default function AuthRegister() {
           try {
             const apiUrl = import.meta.env.VITE_APP_API_URL; // Replace with your actual API URL
             const role=roles.find(r=>r.name===values.role)
+            console.log('role',role)
+
             const response = await axios.post(
               `${apiUrl}/admins`,
               {
@@ -99,7 +104,7 @@ export default function AuthRegister() {
                 phoneNumber: values.phoneNumber,
                 email: values.email,
                 password: values.password,
-                role:role
+                role:role.id
               },
             );
             console.log(response.status);

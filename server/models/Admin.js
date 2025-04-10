@@ -1,38 +1,80 @@
-const mongoose = require('mongoose');
-const generateNextId = require('../services/generateNextId.js');
-const { model, Schema } = require('mongoose');
+const { Sequelize, DataTypes } = require('sequelize');
 const bcrypt = require('bcryptjs');
+const generateNextId = require('../services/generateNextId'); // Import the generateNextId method
+const sequelize = require('../config/connectDb'); // Assuming you have a sequelize instance
 
-const AdministratorSchema = new Schema({
-  code: {type: String, required: false},
-  name: {type: String, required: [true,"please enter name"]},
-  email: {type: String, required: [true,"please enter email"],unique:true},
-  password: {type: String, required: [true,"please enter password"]},
-  phoneNumber: {type: String, required: [true,"please enter phone"],unique:true},
-  role:{type:Schema.Types.ObjectId, ref:'Role',required:[true,"please Provide Role"]},
-},
-  {
-    timestamps: true,
-    toJSON: {virtuals: true},
-    toObject: {virtuals: true},
-  },
-);
-AdministratorSchema.pre("save", async function (next) {
- console.log("Before saving:", this);
+// Administrator model definition
+const Administrator = sequelize.define('Administrator', {
+    code: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+    },
+    name: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        validate: {
+            notEmpty: { msg: 'Please enter name' },
+        },
+    },
+    email: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+        validate: {
+            notEmpty: { msg: 'Please enter email' },
+            isEmail: { msg: 'Please enter a valid email' },
+        },
+    },
+    password: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        validate: {
+            notEmpty: { msg: 'Please enter password' },
+        },
+    },
+    phoneNumber: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+        validate: {
+            notEmpty: { msg: 'Please enter phone' },
+        },
+    },
+    role: {
+        type: DataTypes.INTEGER, // Assuming role is an integer ID referencing SystemConstant
+        allowNull: false,
+        references: {
+            model: 'SystemConstants', // Reference to SystemConstant model
+            key: 'id',
+        },
+    },
+}, {
+    timestamps: true, // Automatically adds createdAt and updatedAt
+    tableName: 'administrators', // Name of the table
+});
 
-  if (!this.code) {
-    this.code = await generateNextId(this.constructor, "AD-");
-  }
-  if (this.isModified("password")) {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-  }
-  next();
+// Before creating an administrator, we will set the code if it's null
+Administrator.beforeCreate(async (administrator) => {
+    if (!administrator.code) {
+        // Generate next ID using the generateNextId function
+        administrator.code = await generateNextId(Administrator, 'AD-');
+    }
+    // Hash password before saving
+    if (administrator.password) {
+        const salt = await bcrypt.genSalt(10);
+        administrator.password = await bcrypt.hash(administrator.password, salt);
+    }
 });
 
 // Method to compare passwords
-AdministratorSchema.methods.comparePassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+Administrator.prototype.comparePassword = async function (enteredPassword) {
+    return await bcrypt.compare(enteredPassword, this.password);
 };
 
-module.exports = model("Administrator", AdministratorSchema);
+// Sync the model with the database
+sequelize.sync()
+    .then(() => console.log('Administrator table synced'))
+    .catch((err) => console.error('Error syncing table:', err));
+
+module.exports = Administrator;

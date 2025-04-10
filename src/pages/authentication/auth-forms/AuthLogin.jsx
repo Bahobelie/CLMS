@@ -61,7 +61,6 @@ export default function AuthLogin({ isDemo = false }) {
 
   const handleLogin = async (values, { setSubmitting }) => {
     try {
-      console.log(values);
 
       const response = await axios.post(`${apiUrl}/admins/login`, {
         email: values.email,

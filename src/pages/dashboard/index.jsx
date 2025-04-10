@@ -15,7 +15,7 @@ import { LuUsers } from 'react-icons/lu';
 import { MdOutlineDateRange } from 'react-icons/md';
 import { FaRegFileLines } from 'react-icons/fa6';
 import { LiaDollarSignSolid } from 'react-icons/lia';
-import * as data from '../../data/Patinet';
+import * as data from '../../data/Patient';
 
 // project import
 import MonthlyBarChart from './MonthlyBarChart';
@@ -38,6 +38,7 @@ import avatar1 from 'assets/images/users/avatar-1.png';
 import avatar2 from 'assets/images/users/avatar-2.png';
 import avatar3 from 'assets/images/users/avatar-1.png';
 import avatar4 from 'assets/images/users/avatar-2.png';
+import { Patient } from '../../data/Patient';
 // avatar style
 const avatarSX = {
   width: 36,
@@ -94,7 +95,7 @@ export default function DashboardDefault() {
           percentage={70.5}
           extra="8,900"
         >
-          <BarChart data={data.Appointments} barColor={theme.palette.text.yellow} />
+          <BarChart data={data.Appointments} barColor={theme.palette.text.secondary} />
         </AnalyticReport>
       </Grid>
       <Grid item xs={12} sm={6} md={4} lg={3}>

@@ -12,7 +12,7 @@ class AdminService extends CrudService {
 
     const { role } = data;
     // Find role from SystemConstant
-    const systemRole = await SystemConstant.findOne({ _id: role });
+    const systemRole = await SystemConstant.findByPk(role);
     if (!systemRole) {
       throw new Error("Invalid role: Role not found in SystemConstant");
     }
@@ -22,7 +22,7 @@ class AdminService extends CrudService {
   async login(data){
     const { email, password} = data;
 
-    const admin = await Admin.findOne({ email });
+    const admin = await Admin.findOne({where:{email:email}});
     if (!admin) {throw new Error("Invalid credentials");
     }
 
@@ -31,15 +31,15 @@ class AdminService extends CrudService {
 
     // Generate JWT token
     const token = jwt.sign(
-      { id: admin._id, role: admin.role },
+      { id: admin.id, role: admin.role },
       process.env.JWT_SECRET || "your_secret_key",
       { expiresIn: "1h" }
     );
-   const Role=await SystemConstant.findOne({_id:admin.role})
+   const Role=await SystemConstant.findByPk(admin.role)
     // Return success response (excluding password)
 
     const user={
-     code:admin.code,
+      code:admin.code,
       email:admin.email,
       password:admin.password,
       name:admin.name,
@@ -58,7 +58,7 @@ class AdminService extends CrudService {
 
     // ✅ Check if the role exists in SystemConstant
     if (role) {
-      const systemRole = await SystemConstant.findOne({ _id: role });
+      const systemRole = await SystemConstant.findByPk(role);
       if (!systemRole) {
         throw new Error("Invalid role: Role not found in SystemConstant");
       }
@@ -71,16 +71,18 @@ class AdminService extends CrudService {
     }
 
     // ✅ Perform update operation
-    const updatedAdmin = await this.model.findByIdAndUpdate(id, data, {
-      new: true, // Return updated document
-      runValidators: true, // Ensure validation is applied
+    const [updatedRows] = await this.model.update(id,data, {
+      where: { id }, // Ensure you are updating by the ID
+      returning: true, // To return the updated rows
+      plain: true, // Ensure that the result is a single object (not an array)
+      runValidators: true, // Apply validation rules
     });
 
-    if (!updatedAdmin) {
+    if (!updatedRows) {
       throw new Error("Admin not found");
     }
 
-    return updatedAdmin;
+    return updatedRows;
   }
 }
 module.exports=AdminService;
