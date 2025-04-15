@@ -33,7 +33,7 @@ const MainRoutes = {
       element: <NotFound />
     },
     {
-      path: 'Patient-details/:id',
+      path: 'Patient-details/:code',
       element: <PatientDetail />
     },
     {

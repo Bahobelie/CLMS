@@ -1,25 +1,33 @@
 // assets
 import { AiOutlineHome, AiOutlineUsergroupAdd } from 'react-icons/ai';
-import { LuUserPen } from 'react-icons/lu';
-import { RiUserHeartLine, RiMedicineBottleLine } from 'react-icons/ri';
-import { MdDateRange, MdPayment } from 'react-icons/md';
+import { LuUsers } from "react-icons/lu";
+import {RiMedicineBottleLine } from 'react-icons/ri';
+import { MdDateRange } from 'react-icons/md';
 import { LiaFileInvoiceSolid } from 'react-icons/lia';
 import { SiMockserviceworker } from 'react-icons/si';
 import { IoSettingsOutline } from 'react-icons/io5';
 import { UnorderedListOutlined } from '@ant-design/icons';
+import { RiGroupLine } from "react-icons/ri";
+import { TbUserHeart } from "react-icons/tb";
+import { MdOutlinePayments } from "react-icons/md";
+import { RiServiceLine } from "react-icons/ri";
+
+
 // icons
 const icons = {
   AiOutlineHome,
   AiOutlineUsergroupAdd,
-  LuUserPen,
-  RiUserHeartLine,
+  LuUsers,
+  RiGroupLine,
   MdDateRange,
-  MdPayment,
   LiaFileInvoiceSolid,
   SiMockserviceworker,
   RiMedicineBottleLine,
   IoSettingsOutline,
-  UnorderedListOutlined
+  UnorderedListOutlined,
+  TbUserHeart,
+  MdOutlinePayments,
+  RiServiceLine
 };
 
 // ==============================|| MENU ITEMS - DASHBOARD ||============================== //
@@ -42,16 +50,52 @@ const dashboard = {
       title: 'Patient',
       type: 'item',
       url: '/patients',
-      icon: icons.AiOutlineUsergroupAdd,
+      icon: icons.LuUsers,
       breadcrumbs: false,
       roles: ['admin', 'doctor', 'receptionist', 'labTechnician', 'emergency', 'sonographer', 'injectionRoomStaff']
+    },
+    {
+      id: 'Receptions',
+      title: 'Receptions',
+      type: 'item',
+      url: '/receptions',
+      icon: icons.RiGroupLine,
+      breadcrumbs: false,
+      roles: ['admin', "doctor", "receptionist"]
+    },
+    {
+      id: 'Doctors',
+      title: 'Doctors',
+      type: 'item',
+      url: '/doctors',
+      icon: icons.TbUserHeart,
+      breadcrumbs: false,
+      roles: ['admin', "doctor", "receptionist"]
+    },
+    {
+      id: 'Services',
+      title: 'Services',
+      type: 'item',
+      url: '/services',
+      icon: icons.RiServiceLine,
+      breadcrumbs: false,
+      roles: ['admin', "doctor", "receptionist"]
+    },
+    {
+      id: 'Medicine',
+      title: 'Medicine',
+      type: 'item',
+      url: '/medicine',
+      icon: icons.RiMedicineBottleLine,
+      breadcrumbs: false,
+      roles: ['admin', "doctor", "receptionist"]
     },
     {
       id: 'Laboratory',
       title: 'LabTest',
       type: 'item',
-      url: '/receptions',
-      icon: icons.LuUserPen,
+      url: '/laboratory',
+      icon: icons.LuUsers,
       breadcrumbs: false,
       roles: ['admin', "labTechnician"]
     },
@@ -59,7 +103,7 @@ const dashboard = {
       id: 'PatientHistory',
       title: 'PatientHistory',
       type: 'item',
-      url: '/receptions',
+      url: '/patienthistory',
       icon: icons.UnorderedListOutlined,
       breadcrumbs: false,
       roles: ['admin', "doctor"]
@@ -68,26 +112,17 @@ const dashboard = {
       id: 'Appointment',
       title: 'Appointment',
       type: 'item',
-      url: '/Notfound',
+      url: '/appointments',
       icon: icons.MdDateRange,
       breadcrumbs: false,
       roles: ['admin', "doctor", "receptionist"]
     },
     {
-      id: 'Stuff',
-      title: 'Stuff',
+      id: 'Payment',
+      title: 'Payment',
       type: 'item',
-      url: '/Notfound',
-      icon: icons.RiUserHeartLine,
-      breadcrumbs: false,
-      roles: ['admin', "doctor", "receptionist"]
-    },
-    {
-      id: 'Billing & Payment',
-      title: 'BillingAndPayment',
-      type: 'item',
-      url: '/doctor',
-      icon: icons.RiUserHeartLine,
+      url: '/payment',
+      icon: icons.MdOutlinePayments,
       breadcrumbs: false,
       roles: ['admin', 'receptionist']
     },

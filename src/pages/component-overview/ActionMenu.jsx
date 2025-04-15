@@ -6,11 +6,16 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import { Delete, Visibility } from '@mui/icons-material';
 import { useNavigate } from 'react-router';
 import PatientDetail from '../component/PatientDetail';
+import Swal from 'sweetalert2';
+import axios from 'axios';
 
-const ActionMenu = ({ rowId }) => {
+const ActionMenu = ({ rowId,Refetch }) => {
   const [anchorEl, setAnchorEl] = useState(null); // State to control menu visibility
   const theme = useTheme();
   const Navigate=useNavigate();
+
+
+  const apiUrl = import.meta.env.VITE_APP_API_URL;
 
   // Open the menu when the button is clicked
   const handleOpenMenu = (event) => {
@@ -29,9 +34,60 @@ const ActionMenu = ({ rowId }) => {
   };
 
   // Handle Delete action
-  const handleDelete = () => {
-    console.log('Delete patient with ID:', rowId);
-    handleCloseMenu(); // Close the menu after action
+  const handleDelete = async () => {
+    let userRole = localStorage.getItem('userRole'); // Assuming the role is stored as 'userRole'
+
+    if (userRole === 'Receptionist' || userRole === 'Doctor') {
+      handleCloseMenu()
+      // Show confirmation alert
+      const result = await Swal.fire({
+        title: "Are you sure?",
+        text: "You won't be able to revert this!",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Yes, delete it!"
+      });
+
+      // If the user confirms the deletion
+      if (result.isConfirmed) {
+        try {
+          // Send the delete request
+          const response = await axios.delete(`${apiUrl}/patients/${rowId}`);
+
+          if (response.status === 200) {
+            await Swal.fire({
+              title: "Deleted!",
+              text: "Your file has been deleted.",
+              icon: "success"
+            });
+            Refetch();
+          } else {
+            // Handle error if the response status is not 200
+            await Swal.fire({
+              title: "Error",
+              text: "There was an issue deleting your file. Please try again.",
+              icon: "error"
+            });
+          }
+        } catch (error) {
+          // Catch any network or server errors
+          await Swal.fire({
+            title: "Error",
+            text: "An error occurred while deleting your file. Please try again later.",
+            icon: "error"
+          });
+        }
+      }
+    } else {
+      // Show a message if the user doesn't have permission
+      await Swal.fire({
+        title: "Unauthorized!",
+        text: "You don't have permission to delete this.",
+        icon: "error"
+      });
+    }
   };
 
   return (
@@ -90,7 +146,7 @@ const ActionMenu = ({ rowId }) => {
         >
           <ListItemIcon
             sx={{
-              color: theme.palette.primary[100]
+              color: theme.palette.error.main,
             }}
           >
             <Delete />

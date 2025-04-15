@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion';
 import { DataGrid, GridToolbar } from '@mui/x-data-grid';
-import ActionMenu from './ActionMenu';
 import { useState, useEffect } from 'react';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import * as Yup from 'yup';
@@ -23,25 +22,40 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import Swal from 'sweetalert2';
+import ActionMenu from './ActionMenu';
 
 const GenericDataGrid = ({
+                           // Configuration props
                            title,
                            apiEndpoint,
                            modelName,
                            prefix,
+                           detailPagePath,
+
+                           // Data display props
                            columns,
+                           valueGetters = {},
+                           customRenderers = {},
+
+                           // Form configuration
                            initialFormValues,
                            validationSchema,
                            formFields,
-                           detailPagePath,
+
+                           // Search configuration
                            searchFields = ['name', 'code'],
+
+                           // Additional functionality
                            additionalActions = [],
+                           customHandlers = {},
+                           serviceConfig = null,
                          }) => {
   const theme = useTheme();
   const apiUrl = import.meta.env.VITE_APP_API_URL;
   const navigate = useNavigate();
   const location = useLocation();
 
+  // State management
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [open, setOpen] = useState(false);
@@ -49,7 +63,10 @@ const GenericDataGrid = ({
   const [refetch, setRefetch] = useState(false);
   const [formData, setFormData] = useState(initialFormValues);
 
-  // Fetch all items
+
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+  // Fetch data from API
   const fetchData = async () => {
     try {
       const response = await axios.get(`${apiUrl}/${apiEndpoint}`);
@@ -59,14 +76,14 @@ const GenericDataGrid = ({
     }
   };
 
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+
 
   useEffect(() => {
     fetchData();
   }, [refetch]);
 
+  // Handle search filtering
   useEffect(() => {
-    // Filter based on search term
     const searchParams = new URLSearchParams(location.search);
     const searchTerm = searchParams.get('search') || '';
 
@@ -83,11 +100,12 @@ const GenericDataGrid = ({
     }
   }, [location.search, data]);
 
+  // Modal handlers
   const handleOpen = async () => {
     try {
       const response = await axios.get(`${apiUrl}/model/next-code`, {
         params: {
-          model: `${modelName}Schema`,
+          model: `${modelName.toLowerCase()}Schema`,
           prefix: prefix
         }
       });
@@ -103,39 +121,38 @@ const GenericDataGrid = ({
     setFormData(initialFormValues);
   };
 
+  // Form submission handler
   const handleSubmit = async (values) => {
     try {
-      const payload = {
+      let payload = {
         code: itemCode,
         ...values
       };
 
-      const response = await axios.post(`${apiUrl}/${apiEndpoint}`, payload);
-
-      if (response.status === 201) {
-        setOpen(false);
-        setRefetch(prev => !prev);
-        await Swal.fire({
-          title: `${modelName} Created!`,
-          text: 'Record created successfully.',
-          icon: 'success',
-          timer: 3000,
-          showConfirmButton: false
-        });
+      // Call custom submit handler if provided
+      if (customHandlers.onSubmit) {
+        await customHandlers.onSubmit(payload);
       } else {
-        await Swal.fire({
-          title: 'Error!',
-          text: 'Failed to create record.',
-          icon: 'error',
-          timer: 3000,
-          showConfirmButton: false
-        });
+        const response = await axios.post(`${apiUrl}/${apiEndpoint}`, payload);
+
+        if (response.status === 201) {
+          setOpen(false);
+          setRefetch(prev => !prev);
+          await Swal.fire({
+            title: `${modelName} Created!`,
+            text: 'Record created successfully.',
+            icon: 'success',
+            timer: 3000,
+            showConfirmButton: false
+          });
+        }
       }
     } catch (error) {
       setOpen(false);
+      console.log(error);
       await Swal.fire({
         title: 'Error!',
-        text: error.response?.data?.message || 'Failed to create record.',
+        text: error?.message || 'Failed to create record.',
         icon: 'error',
         timer: 3000,
         showConfirmButton: false
@@ -143,62 +160,107 @@ const GenericDataGrid = ({
     }
   };
 
-  const renderFormField = (field) => {
+  // Render form field based on type
+  const renderFormField = (field, values, handleChange, touched, errors, setFieldValue) => {
+    const commonProps = {
+      fullWidth: true,
+      name: field.name,
+      label: `${field.label}${field.required ? ' *' : ''}`,
+      value: values[field.name],
+      onChange: handleChange,
+      error: touched[field.name] && Boolean(errors[field.name]),
+      helperText: touched[field.name] && errors[field.name],
+    };
+
     switch (field.type) {
       case 'text':
-        return (
-          <Field
-            as={TextField}
-            fullWidth
-            label={field.label}
-            name={field.name}
-            required={field.required}
-            error={field.touched && Boolean(field.errors)}
-            helperText={field.touched && field.errors}
-          />
-        );
+        return <Field as={TextField} {...commonProps} />;
+
       case 'select':
         return (
-          <FormControl fullWidth error={field.touched && Boolean(field.errors)}>
-            <InputLabel>{field.label}{field.required && ' *'}</InputLabel>
+          <FormControl fullWidth error={touched[field.name] && Boolean(errors[field.name])}>
+            <InputLabel>{field.label}{field.required ? ' *' : ''}</InputLabel>
             <Select
               name={field.name}
-              value={field.value}
-              onChange={field.onChange}
+              value={values[field.name] || ''}
+              onChange={handleChange}
               label={`${field.label}${field.required ? ' *' : ''}`}
-            >
+             >
               {field.options.map(option => (
                 <MenuItem key={option.value} value={option.value}>
                   {option.label}
                 </MenuItem>
               ))}
             </Select>
-            {field.touched && field.errors && (
-              <FormHelperText>{field.errors}</FormHelperText>
+            {touched[field.name] && errors[field.name] && (
+              <FormHelperText>{errors[field.name]}</FormHelperText>
             )}
           </FormControl>
         );
+
       case 'date':
         return (
           <LocalizationProvider dateAdapter={AdapterDateFns}>
             <DateTimePicker
               label={`${field.label}${field.required ? ' *' : ''}`}
-              value={field.value}
-              onChange={(date) => field.onChange({ target: { name: field.name, value: date } })}
+              value={values[field.name]}
+              onChange={(date) => setFieldValue(field.name, date)}
               slotProps={{
                 textField: {
                   fullWidth: true,
-                  error: field.touched && Boolean(field.errors),
-                  helperText: field.touched && field.errors,
+                  error: touched[field.name] && Boolean(errors[field.name]),
+                  helperText: touched[field.name] && errors[field.name],
                 },
               }}
             />
           </LocalizationProvider>
         );
+
+      case 'custom':
+        return field.render(values, handleChange, touched, errors, setFieldValue);
+
       default:
         return null;
     }
   };
+
+  // Prepare rows for DataGrid with value getters and custom renderers
+  const preparedRows = filteredData.map(item => {
+    const row = { id: item.code || item.id, ...item };
+
+    // Apply value getters
+    Object.entries(valueGetters).forEach(([field, getter]) => {
+      row[field] = getter(item);
+    });
+
+    return row;
+  });
+
+  // Prepare columns for DataGrid with custom renderers
+  const preparedColumns = columns.map(column => {
+    if (customRenderers[column.field]) {
+
+      return {
+        ...column,
+        renderCell: (params) => customRenderers[column.field](params)
+      };
+    }
+    return column;
+  }).concat([
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      width: 150,
+      renderCell: (params) => (
+        <ActionMenu
+          rowId={params.row.code || params.row.id}
+          onRefetch={() => setRefetch(prev => !prev)}
+          additionalActions={additionalActions}
+          customHandlers={customHandlers}
+        />
+      ),
+    }
+  ]);
 
   return (
     <>
@@ -220,24 +282,10 @@ const GenericDataGrid = ({
         }}
       >
         <DataGrid
-          rows={filteredData}
-          columns={[
-            ...columns,
-            {
-              field: 'actions',
-              headerName: 'Actions',
-              width: 150,
-              renderCell: (params) => (
-                <ActionMenu
-                  rowId={params.row.code}
-                  onRefetch={() => setRefetch(prev => !prev)}
-                  additionalActions={additionalActions}
-                />
-              ),
-            }
-          ]}
+          rows={preparedRows}
+          columns={preparedColumns}
           checkboxSelection
-          getRowId={(row) => row.code}
+          getRowId={(row) => row.code || row.id}
           disableRowSelectionOnClick
           initialState={{
             pagination: {
@@ -248,7 +296,7 @@ const GenericDataGrid = ({
             }
           }}
           onRowDoubleClick={(params) => {
-            navigate(`${detailPagePath}/${params.row.code}`);
+            navigate(`${detailPagePath}/${params.row.code || params.row.id}`);
           }}
           pageSizeOptions={[15, 24, 50, 100]}
           slots={{
@@ -330,19 +378,12 @@ const GenericDataGrid = ({
                     />
                   </Grid>
 
-                  {formFields.map((fieldConfig, index) => (
-                    <Grid item xs={12} sm={fieldConfig.fullWidth ? 12 : 6} key={index}>
-                      {renderFormField({
-                        ...fieldConfig,
-                        value: values[fieldConfig.name],
-                        onChange: handleChange,
-                        touched: touched[fieldConfig.name],
-                        errors: errors[fieldConfig.name]
-                      })}
+                  {formFields.map((field, index) => (
+                    <Grid item xs={12} sm={field.fullWidth ? 12 : 6} key={index}>
+                      {renderFormField(field, values, handleChange, touched, errors, setFieldValue)}
                     </Grid>
                   ))}
                 </Grid>
-
                 <Button
                   variant="contained"
                   fullWidth
