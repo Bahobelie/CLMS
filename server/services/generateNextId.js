@@ -8,6 +8,9 @@ const sequelize = require('../config/connectDb');
  * @returns {Promise<string>} - The next generated ID.
  */
 const generateNextId = async (model, prefix) => {
+
+  console.log(prefix);
+  console.log(model);
   const lastRecord = await model.findOne({
     order: [['code', 'DESC']], // Order by code descending to get the last entry
     where: {

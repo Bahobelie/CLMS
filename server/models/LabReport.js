@@ -1,8 +1,15 @@
 const { Sequelize, DataTypes } = require('sequelize');
-const sequelize = require('../config/connectDb'); // Assuming you have a sequelize instance
+const sequelize = require('../config/connectDb');
+const generateNextId = require('../services/generateNextId'); // Assuming you have a sequelize instance
+const bcrypt = require('bcryptjs');
 
 // LabReport model definition
 const LabReport = sequelize.define('LabReport', {
+  code: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true,
+  },
   patientId: {
     type: DataTypes.INTEGER, // Assuming you are using integer for patient IDs, or adjust to fit your schema
     allowNull: false,
@@ -42,6 +49,19 @@ const LabReport = sequelize.define('LabReport', {
 }, {
   timestamps: true,
   tableName: 'lab_reports', // Table name in the database
+});
+
+// Before creating an administrator, we will set the code if it's null
+LabReport.beforeCreate(async (administrator) => {
+  if (!administrator.code) {
+    // Generate next ID using the generateNextId function
+    administrator.code = await generateNextId(LabReport, 'LR-');
+  }
+  // Hash password before saving
+  if (administrator.password) {
+    const salt = await bcrypt.genSalt(10);
+    administrator.password = await bcrypt.hash(administrator.password, salt);
+  }
 });
 
 // Sync the model with the database (optional, based on your setup)

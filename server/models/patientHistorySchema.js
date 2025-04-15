@@ -22,6 +22,7 @@ const PatientHistory = sequelize.define('PatientHistory', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+
   // Medical History
   medical_history_conditions: {
     type: DataTypes.STRING,
@@ -39,6 +40,7 @@ const PatientHistory = sequelize.define('PatientHistory', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+
   // Family & Lifestyle Information
   allergies: {
     type: DataTypes.STRING,
@@ -72,6 +74,7 @@ const PatientHistory = sequelize.define('PatientHistory', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+
   // Current Symptoms & Treatments
   current_symptoms_pain_location: {
     type: DataTypes.STRING,
@@ -85,6 +88,7 @@ const PatientHistory = sequelize.define('PatientHistory', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+
   previous_treatments_previous_doctors: {
     type: DataTypes.STRING,
     allowNull: true,
@@ -97,6 +101,7 @@ const PatientHistory = sequelize.define('PatientHistory', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+
   current_treatments_current_medications: {
     type: DataTypes.STRING,
     allowNull: true,
@@ -110,6 +115,7 @@ const PatientHistory = sequelize.define('PatientHistory', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+
   // Patient Current Info (Vitals & Exam Findings)
   patient_current_info_bp: {
     type: DataTypes.STRING,
@@ -185,7 +191,7 @@ const PatientHistory = sequelize.define('PatientHistory', {
     allowNull: true,
   },
   // Patient ID - Reference to the Patient Table
-  patientid: {
+  patientId: {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {

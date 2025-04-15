@@ -8,7 +8,7 @@ const PatientHistoryServices = new PatientHistoryService(PatientHistory);
 const PatientHistoryController = new CrudController(PatientHistoryServices);
 
 const router = express.Router();
-
+router.get('/by-condition',PatientHistoryController.findByCondition);
 router.get('/', PatientHistoryController.getAll);
 router.get('/:id', PatientHistoryController.getById);
 router.post('/', PatientHistoryController.create);

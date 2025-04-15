@@ -29,50 +29,30 @@ const Patient = sequelize.define('Patient', {
   gender: {
     type: DataTypes.STRING,
     allowNull: false,
-    validate: {
-      isIn: [['Male', 'Female']],
-    },
   },
   date_of_birth: { // Mapping to 'date_of_birth' in PostgreSQL
     type: DataTypes.DATE,
     allowNull: true,
   },
   age: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.STRING,
     allowNull: false,
   },
   phone_number: { // Mapping to 'phone_number' in PostgreSQL
     type: DataTypes.STRING,
     allowNull: true,
-    validate: {
-      len: [10, 10], // Ensure 10 digits for phone number
-    },
   },
   bmi: { // Mapping to 'bmi' in PostgreSQL
     type: DataTypes.STRING,
     allowNull: true,
-    validate: {
-      isIn: [['No', 'Weight', 'Height', 'Both Height and Weight']],
-    },
   },
   bp: { // Mapping to 'bp' in PostgreSQL
     type: DataTypes.STRING,
     allowNull: true,
-    validate: {
-      isIn: [['Yes', 'No']],
-    },
   },
   blood_group: { // Mapping to 'blood_group' in PostgreSQL
     type: DataTypes.STRING,
-    allowNull: true,
-    validate: {
-      isIn: [
-        ['Unknown', 'To Test', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
-      ],
-    },
-    set(value) {
-      this.setDataValue('blood_group', value.toUpperCase()); // Ensure uppercase
-    },
+    allowNull: true
   },
   country: {
     type: DataTypes.STRING,
@@ -81,34 +61,14 @@ const Patient = sequelize.define('Patient', {
   },
   district_state: { // Mapping to 'district_state' in PostgreSQL
     type: DataTypes.STRING,
-    allowNull: true,
-    validate: {
-      isIn: [
-        [
-          'Addis Ababa',
-          'Afar',
-          'Amhara',
-          'Benishangul-Gumuz',
-          'Dire Dawa',
-          'Gambela',
-          'Harari',
-          'Oromiya',
-          'Somali',
-          'SNNPR',
-          'Tigray',
-        ],
-      ],
-    },
+    allowNull: true
   },
   application_fee: { // Mapping to 'application_fee' in PostgreSQL
     type: DataTypes.STRING,
-    defaultValue: 'Unpaid',
+    defaultValue: 'Expired',
     allowNull: true,
-    validate: {
-      isIn: [['Paid', 'Unpaid']],
-    },
   },
-  remarks: { // Mapping to 'remarks' in PostgreSQL
+  remark: { // Mapping to 'remarks' in PostgreSQL
     type: DataTypes.STRING,
     defaultValue: 'Remark',
     allowNull: true,

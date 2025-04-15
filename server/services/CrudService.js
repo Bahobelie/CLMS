@@ -22,7 +22,10 @@ class CrudService {
   async update(id, data) {
     const record = await this.model.findByPk(id); // Find the record by primary key
     if (record) {
-      return record.update(data); // Use update() on the found record
+      const result = await record.update(data);
+      if (result) {
+        return result;  // Return the updated instance
+      }
     }
     return null; // If record not found
   }

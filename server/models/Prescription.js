@@ -1,7 +1,7 @@
 const { Sequelize, DataTypes } = require('sequelize');
-const sequelize = require('../config/database'); // Your sequelize instance
+const sequelize = require('../config/connectDb'); // Your sequelize instance
 const generateNextId = require('../services/generateNextId'); // Import the generateNextId method
-const Patient = require('./Patient'); // Import the Patient model
+const Patient = require('./patientSchema'); // Import the Patient model
 
 // Prescription model definition
 const Prescription = sequelize.define('Prescription', {

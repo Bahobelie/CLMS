@@ -38,9 +38,10 @@ class crudControllr {
     try {
       const item=await this.service.getById(req.params.id);
       if(!item) return res.status(404).json({ error:"Item not found" });
-            await this.service.update(req.params.id, req.body);
 
-      res.status(200).send(item);
+      const updatedItem= await this.service.update(req.params.id, req.body);
+
+      res.status(200).send(updatedItem);
     }
     catch (err)
     {
