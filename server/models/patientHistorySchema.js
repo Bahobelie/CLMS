@@ -83,6 +83,7 @@ const PatientHistory = sequelize.define('PatientHistory', {
   current_symptoms_pain_severity: {
     type: DataTypes.INTEGER,
     allowNull: true,
+    default:1
   },
   current_symptoms_other_symptoms: {
     type: DataTypes.STRING,

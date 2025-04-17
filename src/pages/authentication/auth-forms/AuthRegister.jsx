@@ -35,6 +35,7 @@ export default function AuthRegister() {
   const Navigate=useNavigate();
   const [roles, setRoles] = useState([]);
 
+
   const getAllRoles = async () => {
     try {
       const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/systemConstants/by-condition`, {
@@ -84,7 +85,7 @@ export default function AuthRegister() {
         validationSchema={Yup.object().shape({
           fullName: Yup.string().max(255).required('Full Name is required'),
           phoneNumber: Yup.string()
-            .max(13)
+            .max(14)
             .min(10)
             .required('Phone Number is required'),
           email: Yup.string().email('Must be a valid email').max(255).required('Email is required'),
@@ -95,11 +96,17 @@ export default function AuthRegister() {
           try {
             const apiUrl = import.meta.env.VITE_APP_API_URL; // Replace with your actual API URL
             const role=roles.find(r=>r.name===values.role)
-            console.log('role',role)
+            const code=await axios.get(`${apiUrl}/model/next-code`,{
+              params:{
+                model:'Admin',
+                prefix: 'AD-'
+              }
+            })
 
             const response = await axios.post(
               `${apiUrl}/admins`,
               {
+                code:code.data.code,
                 name: values.fullName,
                 phoneNumber: values.phoneNumber,
                 email: values.email,

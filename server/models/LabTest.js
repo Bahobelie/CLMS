@@ -31,13 +31,9 @@ const LabTest = sequelize.define('LabTest', {
     type: DataTypes.NUMBER,
     allowNull: false,
   },
-  estimatedtimeinhours: {
-    type: DataTypes.NUMBER,
-    allowNull: true, // Time to get results (can be null)
-  },
   isactive: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true,
+    defaultValue: false,
   },
   result: {
     type: DataTypes.STRING,
@@ -52,7 +48,7 @@ const LabTest = sequelize.define('LabTest', {
     type: DataTypes.STRING,
     allowNull: true,
     validate: {
-      isIn: [['pending', 'complete','Canceled']],
+      isIn: [['pending', 'complete','canceled']],
     },
   },
   remark: {

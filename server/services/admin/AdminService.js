@@ -3,6 +3,7 @@ const SystemConstant = require('../../models/SystemConstant');
 const Admin=require('../../models/Admin');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const generateNextId = require('../generateNextId');
 
 class AdminService extends CrudService {
   constructor(model) {
@@ -16,7 +17,7 @@ class AdminService extends CrudService {
     if (!systemRole) {
       throw new Error("Invalid role: Role not found in SystemConstant");
     }
-    return super.create(data);
+    return Admin.create(data);
   };
 
   async login(data){

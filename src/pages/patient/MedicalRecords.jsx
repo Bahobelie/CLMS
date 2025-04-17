@@ -17,7 +17,8 @@ import { truncate } from 'lodash';
 import Swal from 'sweetalert2';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import PatientHistory from './PatientHistory';
-import PatientHealthInfo from './PatientHealtInfo';
+import PatientHistoryModal from './PatientHistoryModal';
+import generateCode from '../../utils/generateCode';
 
 const MedicalRecords = ({ patient }) => {
   const apiUrl = import.meta.env.VITE_APP_API_URL;
@@ -30,6 +31,9 @@ const MedicalRecords = ({ patient }) => {
   const [showAll, setShowAll] = useState(false);
   const [filterStartDate, setFilterStartDate] = useState('');
   const [openModal, setopenModal] = useState(false);
+
+  const [openHistoryModal, setOpenHistoryModal] = useState(false); // State to control modal visibility
+  const [modalContent, setModalContent] = useState(''); // State to store the modal content
 
   useEffect(() => {
     const fetchPatientHistory = async () => {
@@ -48,6 +52,8 @@ const MedicalRecords = ({ patient }) => {
 
     fetchPatientHistory();
   }, [patient, apiUrl, refetch]);
+
+  let userRole = localStorage.getItem('userRole');
 
   const handleDelete = async (id) => {
     let userRole = localStorage.getItem('userRole'); // Assuming the role is stored as 'userRole'
@@ -101,44 +107,83 @@ const MedicalRecords = ({ patient }) => {
         prefix: 'PH-'
       }
     });
-    console.log(itemCode.data.code)
+    const labItemCode=await generateCode('LabTest', `LT-`);
+
     try {
       let payload = {
         code: itemCode.data.code,
+         patientId:patient.id,
         ...values
       };
-      console.log('payload',payload)
-        const response = await axios.post(`${apiUrl}/patientHistorys`, payload);
 
-        if (response.status === 201) {
-          setopenModal(false);
-          setRefetch(prev => !prev);
-          await Swal.fire({
-            title: `PatientHistory's Created!`,
-            text: 'Record created successfully.',
-            icon: 'success',
-            timer: 3000,
-            showConfirmButton: false
+      const labTests = await Promise.all(
+        values.selectedLabTests.map(async (test, index) => ({
+          code: labItemCode+index,
+          name: test.name || "UNNAMED_TEST",
+          description: test.description || "",
+          price: test.amount || 0,
+          isactive: true,
+          referencerange: test.referencerange || "N/A",
+          status: 'pending',
+          remark: test.remark || "", //
+        }))
+      );
+
+
+      // 1. First API call - Create Patient History
+      const response = await axios.post(`${apiUrl}/patientHistorys`, payload);
+
+      // 2. Create Lab Tests if they exist
+      if (values.selectedLabTests?.length > 0) {
+        console.log('entry')
+        try {
+          const saveLabTests = await axios.post(`${apiUrl}/labTests/bulkCreate`, {
+             patientid: patient.id,
+            labTests: labTests.map(test => ({
+              ...test,
+              patientid: patient.id, // Include in each test
+              remark: test.remark || "", // Replace null
+            })),
           });
+        } catch (labError) {
+          // Rollback if lab test creation fails
+          await axios.delete(`${apiUrl}/patientHistorys/${response.data.id}`);
+          throw labError; // Re-throw to trigger the main catch block
         }
+      }
+
+      // Success Handling (both calls succeeded)
+      setopenModal(false);
+      setRefetch(prev => !prev);
+
+      await Swal.fire({
+        title: "Success!",
+        text: "Patient history and lab tests saved successfully.",
+        icon: "success",
+        timer: 3000,
+        showConfirmButton: false,
+      });
 
     } catch (error) {
       setopenModal(false);
-      console.log(error);
+      // Error Handling (either call failed)
+      console.error("Submission error:", error);
       await Swal.fire({
-        title: 'Error!',
-        text: error?.message || 'Failed to create record.',
-        icon: 'error',
-        timer: 3000,
-        showConfirmButton: false
-      });
+        title: "Error!",
+        text: error.response?.data?.message || "Failed to save data. Please try again.",
+        icon: "error",
+        confirmButtonText: "OK",
+      })
     }
   }
   const handleView = (id) => {
-    console.log('View clicked for ID:', id);
-    // Add view logic here
-  };
+    setModalContent(`Content for ID: ${id}`);
 
+    setOpenHistoryModal(true); // Open the modal when the "View" button is clicked
+};
+  const handleClose = () => {
+    setOpenHistoryModal(false); // Close the modal
+  };
   const handelopenModal = () => {
     setopenModal((prev)=>!prev);
   };
@@ -195,7 +240,7 @@ const MedicalRecords = ({ patient }) => {
       </Box>
 
       {loading ? (
-        <Typography variant="body2" color="textSecondary">
+        <Typography variant="body2" color={theme.palette.primary[100]}>
           Loading...
         </Typography>
       ) : filteredHistory.length === 0 ? (
@@ -293,8 +338,14 @@ const MedicalRecords = ({ patient }) => {
           open={openModal}
           onClose={() => setopenModal(false)}
           patient={patient}
+          userRole={userRole}
           handelSubmite={handleSaveHistory}
         />
+      )}
+
+      {openHistoryModal && (
+        <PatientHistoryModal open={openHistoryModal} onClose={handleClose} patient={patient} />
+
       )}
     </>
   );
