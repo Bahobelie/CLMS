@@ -8,6 +8,9 @@ const systemConstantRoutes = require('./routes/systemconstantRoutes');
 const patientRoutes = require('./routes/patientRoutes');
 const patientHistoryRoutes = require('./routes/patientHistoryRoutes');
 const modelRelatedRoutes=require('./routes/modelRelatedRoutes');
+const appointmentRoutes=require('./routes/AppointmentRoutes');
+const employeeRoutes=require('./routes/EmployeeRoutes');
+
 const cors = require('cors');
 
 
@@ -24,6 +27,8 @@ app.use('/api/ultarSounds', ultraSoundRoutes);
 app.use('/api/systemConstants', systemConstantRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/patientHistorys', patientHistoryRoutes);
+app.use('/api/appointments', appointmentRoutes);
+app.use('/api/employees', employeeRoutes);
 
 app.use('/api/model',modelRelatedRoutes);
 

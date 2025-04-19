@@ -11,7 +11,7 @@ const EmergencyLabReport=({patient})=>{
           Emergency Lab Report
         </Typography>
         <Box marginTop={2}>
-          <Typography variant="body2" color="textSecondary">
+          <Typography variant="body2" sx={{textAlign:'center'}} color="textSecondary">
            empty
           </Typography>
         </Box>

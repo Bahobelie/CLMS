@@ -9,7 +9,7 @@ import PatientDetail from '../component/PatientDetail';
 import Swal from 'sweetalert2';
 import axios from 'axios';
 
-const ActionMenu = ({ rowId,Refetch }) => {
+const ActionMenu = ({ rowId,onRefetch,detailPagePath,pathe }) => {
   const [anchorEl, setAnchorEl] = useState(null); // State to control menu visibility
   const theme = useTheme();
   const Navigate=useNavigate();
@@ -29,7 +29,7 @@ const ActionMenu = ({ rowId,Refetch }) => {
 
   // Handle Edit action
   const handleEdit = () => {
-    Navigate(`/Patient-details/${rowId}`)
+    Navigate(`${detailPagePath}/${rowId}`)
     handleCloseMenu(); // Close the menu after action
   };
 
@@ -54,7 +54,7 @@ const ActionMenu = ({ rowId,Refetch }) => {
       if (result.isConfirmed) {
         try {
           // Send the delete request
-          const response = await axios.delete(`${apiUrl}/patients/${rowId}`);
+          const response = await axios.delete(`${apiUrl}/${pathe}/${rowId}`);
 
           if (response.status === 200) {
             await Swal.fire({
@@ -62,7 +62,9 @@ const ActionMenu = ({ rowId,Refetch }) => {
               text: "Your file has been deleted.",
               icon: "success"
             });
-            Refetch();
+            if (onRefetch && typeof onRefetch === 'function') {
+              onRefetch();
+            }
           } else {
             // Handle error if the response status is not 200
             await Swal.fire({
@@ -73,9 +75,10 @@ const ActionMenu = ({ rowId,Refetch }) => {
           }
         } catch (error) {
           // Catch any network or server errors
+          console.log(error)
           await Swal.fire({
             title: "Error",
-            text: "An error occurred while deleting your file. Please try again later.",
+            text: error,
             icon: "error"
           });
         }

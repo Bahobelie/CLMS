@@ -73,6 +73,42 @@ const dashboard = {
       roles: ['admin', "doctor", "receptionist"]
     },
     {
+      id: 'InjectionStaff',
+      title: 'InjectionStaff',
+      type: 'item',
+      url: '/injectionStaff',
+      icon: icons.TbUserHeart,
+      breadcrumbs: false,
+      roles: ['admin', "doctor", "receptionist",'*']
+    },
+    {
+      id: 'SenoGrapher',
+      title: 'SenoGrapher',
+      type: 'item',
+      url: '/senogapher',
+      icon: icons.TbUserHeart,
+      breadcrumbs: false,
+      roles: ['admin', "doctor", "receptionist"]
+    },
+    {
+      id: 'EmergencyStaff',
+      title: 'EmergencyStaff',
+      type: 'item',
+      url: '/emergencyStaff',
+      icon: icons.TbUserHeart,
+      breadcrumbs: false,
+      roles: ['admin', "doctor", "receptionist"]
+    },
+    {
+      id: 'LaboratoryStaff',
+      title: 'LaboratoryStaff',
+      type: 'item',
+      url: '/laboratoryStaff',
+      icon: icons.TbUserHeart,
+      breadcrumbs: false,
+      roles: ['admin', "doctor", "receptionist"]
+    },
+    {
       id: 'Services',
       title: 'Services',
       type: 'item',
@@ -99,42 +135,42 @@ const dashboard = {
       breadcrumbs: false,
       roles: ['admin', "labTechnician"]
     },
-    {
-      id: 'PatientHistory',
-      title: 'PatientHistory',
-      type: 'item',
-      url: '/patienthistory',
-      icon: icons.UnorderedListOutlined,
-      breadcrumbs: false,
-      roles: ['admin', "doctor"]
-    },
-    {
-      id: 'Appointment',
-      title: 'Appointment',
-      type: 'item',
-      url: '/appointments',
-      icon: icons.MdDateRange,
-      breadcrumbs: false,
-      roles: ['admin', "doctor", "receptionist"]
-    },
-    {
-      id: 'Payment',
-      title: 'Payment',
-      type: 'item',
-      url: '/payment',
-      icon: icons.MdOutlinePayments,
-      breadcrumbs: false,
-      roles: ['admin', 'receptionist']
-    },
-    {
-      id: 'RadiologyAndImaging',
-      title: 'Radiology & Imaging',
-      type: 'item',
-      url: '/appointment',
-      icon: icons.MdDateRange,
-      breadcrumbs: false,
-      roles: ['admin', 'sonographer']
-    }
+    // {
+    //   id: 'PatientHistory',
+    //   title: 'PatientHistory',
+    //   type: 'item',
+    //   url: '/patienthistory',
+    //   icon: icons.UnorderedListOutlined,
+    //   breadcrumbs: false,
+    //   roles: ['admin', "doctor"]
+    // },
+    // {
+    //   id: 'Appointment',
+    //   title: 'Appointment',
+    //   type: 'item',
+    //   url: '/appointments',
+    //   icon: icons.MdDateRange,
+    //   breadcrumbs: false,
+    //   roles: ['admin', "doctor", "receptionist"]
+    // },
+    // {
+    //   id: 'Payment',
+    //   title: 'Payment',
+    //   type: 'item',
+    //   url: '/payment',
+    //   icon: icons.MdOutlinePayments,
+    //   breadcrumbs: false,
+    //   roles: ['admin', 'receptionist']
+    // },
+    // {
+    //   id: 'RadiologyAndImaging',
+    //   title: 'Radiology & Imaging',
+    //   type: 'item',
+    //   url: '/appointment',
+    //   icon: icons.MdDateRange,
+    //   breadcrumbs: false,
+    //   roles: ['admin', 'sonographer']
+    // }
   ]
 };
 

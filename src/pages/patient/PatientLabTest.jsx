@@ -38,7 +38,7 @@ import axios from 'axios';
 import EditLabTestModal from './EditLabTestModal';
 import ViewLabTestModal from './ViewLabTestModal';
 
-const PatientLabTest = ({ patient }) => {
+const PatientLabTest = ({ patient,record }) => {
   const apiUrl = import.meta.env.VITE_APP_API_URL;
 
   const [data, setData] = useState([]);
@@ -77,10 +77,11 @@ const PatientLabTest = ({ patient }) => {
       const response = await axios.get(`${apiUrl}/labTests/by-condition`, {
         params: {
           patientid: patient.id,
-          isactive: true // Only fetch active tests
+          isactive: true,
+          patienthistoryid: record.id
         }
       });
-      setData(response.data);
+      setData(response.data || []);
     } catch (err) {
       console.error('Error fetching lab tests:', err);
       setError('Failed to load lab tests. Please try again.');
@@ -170,15 +171,18 @@ const PatientLabTest = ({ patient }) => {
   };
 
   // Filter and sort data
-  const filteredData = data.filter((item) => {
-    const searchStr = filter.toLowerCase();
-    return (
-      item.code?.toLowerCase().includes(searchStr) ||
-      item.name?.toLowerCase().includes(searchStr) ||
-      (item.patientid && item.patientid.toString().includes(searchStr)) ||
-      (item.status && item.status.toLowerCase().includes(searchStr))
-    );
-  });
+  const filteredData = Array.isArray(data)
+    ? data.filter((item) => {
+      const searchStr = filter.toLowerCase();
+      return (
+        item.code?.toLowerCase().includes(searchStr) ||
+        item.name?.toLowerCase().includes(searchStr) ||
+        item.patientid?.toString().includes(searchStr) ||
+        item.status?.toLowerCase().includes(searchStr)
+      );
+    })
+    : [];
+
 
   const sortedData = filteredData.sort((a, b) => {
     let comparison = 0;
@@ -189,8 +193,6 @@ const PatientLabTest = ({ patient }) => {
     }
     return order === 'asc' ? comparison : -comparison;
   });
-
-  console.log('sorted',sortedData);
 
   const emptyRows =
     page > 0 ? Math.max(0, (1 + page) * rowsPerPage - filteredData.length) : 0;
@@ -389,6 +391,7 @@ const PatientLabTest = ({ patient }) => {
         onSave={handleSaveSuccess}
         patient={patient}
         apiUrl={apiUrl}
+        record={record}
       />
 
       <ViewLabTestModal

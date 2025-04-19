@@ -23,15 +23,17 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import Swal from 'sweetalert2';
 import ActionMenu from './ActionMenu';
+import { Checkbox, ListItemText } from '@mui/material';
 
 const GenericDataGrid = ({
                            // Configuration props
                            title,
                            apiEndpoint,
                            modelName,
+                           subModelName,
                            prefix,
                            detailPagePath,
-
+                           pathe,
                            // Data display props
                            columns,
                            valueGetters = {},
@@ -49,6 +51,10 @@ const GenericDataGrid = ({
                            additionalActions = [],
                            customHandlers = {},
                            serviceConfig = null,
+                           params = {},
+
+                           // Reception type handling
+                           employeeType = null, // 'doctor', 'receptionist', etc.
                          }) => {
   const theme = useTheme();
   const apiUrl = import.meta.env.VITE_APP_API_URL;
@@ -62,25 +68,53 @@ const GenericDataGrid = ({
   const [itemCode, setItemCode] = useState('');
   const [refetch, setRefetch] = useState(false);
   const [formData, setFormData] = useState(initialFormValues);
-
+  const [isLoading, setIsLoading] = useState(false);
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  // Fetch data from API
+  // Determine if we should show the "New" button based on user role and employee type
+  const shouldShowNewButton = () => {
+    if (!employeeType) return true; // Not an employee-specific grid
+
+    // For employee grids, only show if user has appropriate role
+    if (employeeType === 'doctor' && user?.role.toLowerCase() === 'admin') return true;
+    if (employeeType === 'receptionist' && user?.role.toLowerCase() === 'admin') return true;
+    return false;
+  };
+
+  // Fetch data from API with employee type filter if specified
   const fetchData = async () => {
+    setIsLoading(true);
     try {
-      const response = await axios.get(`${apiUrl}/${apiEndpoint}`);
+      let fetchParams = { ...params };
+
+      // Add employee type filter if specified
+      if (employeeType) {
+        fetchParams.type = employeeType.toUpperCase(); // Assuming your API expects uppercase
+      }
+
+      const response = await axios.get(`${apiUrl}/${apiEndpoint}/by-condition`, {
+        params: fetchParams
+      });
+      console.log("API response:", response);
       setData(response.data || []);
     } catch (error) {
-      console.error(`Error fetching ${modelName}:`, error);
+      console.error(`Error fetching ${subModelName?subModelName:modelName}:`, error);
+      await Swal.fire({
+        title: 'Error!',
+        text: `Failed to load ${subModelName ? subModelName : modelName} data`,
+        icon: 'error',
+        timer: 3000,
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-
-
   useEffect(() => {
     fetchData();
-  }, [refetch]);
+    console.log('value eters',valueGetters)
+  }, [refetch, employeeType]);
 
   // Handle search filtering
   useEffect(() => {
@@ -100,19 +134,40 @@ const GenericDataGrid = ({
     }
   }, [location.search, data]);
 
+  // Generate model name for code generation based on employee type
+  const getModelForCodeGeneration = () => {
+    if (employeeType) {
+      return `${employeeType}Schema`; // e.g. "doctorSchema" or "receptionistSchema"
+    }
+    return `${modelName.toLowerCase()}Schema`;
+  };
+
   // Modal handlers
   const handleOpen = async () => {
     try {
       const response = await axios.get(`${apiUrl}/model/next-code`, {
         params: {
-          model: `${modelName.toLowerCase()}Schema`,
+          model: getModelForCodeGeneration(),
           prefix: prefix
         }
       });
       setItemCode(response.data.code);
+
+      // Initialize form with employee type if specified
+      const initialData = employeeType
+        ? { ...initialFormValues, type: employeeType.toUpperCase() }
+        : initialFormValues;
+
+      setFormData(initialData);
       setOpen(true);
     } catch (error) {
       console.error('Error generating code:', error);
+      Swal.fire({
+        title: 'Error!',
+        text: 'Failed to generate code',
+        icon: 'error',
+        timer: 3000,
+      });
     }
   };
 
@@ -121,13 +176,20 @@ const GenericDataGrid = ({
     setFormData(initialFormValues);
   };
 
-  // Form submission handler
+  // Form submission handler with employee type handling
   const handleSubmit = async (values) => {
     try {
       let payload = {
         code: itemCode,
         ...values
       };
+
+      // Add employee type to payload if specified
+      if (employeeType) {
+        payload.type = employeeType.toUpperCase();
+      }
+
+      console.log('payloda',payload);
 
       // Call custom submit handler if provided
       if (customHandlers.onSubmit) {
@@ -140,7 +202,7 @@ const GenericDataGrid = ({
           setRefetch(prev => !prev);
           await Swal.fire({
             title: `${modelName} Created!`,
-            text: 'Record created successfully.',
+            text: `${modelName} created successfully.`,
             icon: 'success',
             timer: 3000,
             showConfirmButton: false
@@ -148,29 +210,33 @@ const GenericDataGrid = ({
         }
       }
     } catch (error) {
+      console.error('Submission error:', error);
       setOpen(false);
-      console.log(error);
       await Swal.fire({
         title: 'Error!',
-        text: error?.message || 'Failed to create record.',
+        text: error.response?.data?.message || `Failed to create ${modelName}.`,
         icon: 'error',
         timer: 3000,
-        showConfirmButton: false
       });
     }
   };
 
-  // Render form field based on type
+  // Render form field based on type with employee-specific handling
   const renderFormField = (field, values, handleChange, touched, errors, setFieldValue) => {
     const commonProps = {
       fullWidth: true,
       name: field.name,
       label: `${field.label}${field.required ? ' *' : ''}`,
-      value: values[field.name],
+      value: values[field.name] || '',
       onChange: handleChange,
       error: touched[field.name] && Boolean(errors[field.name]),
       helperText: touched[field.name] && errors[field.name],
     };
+
+    // Skip type field if this is an employee-specific grid
+    if (employeeType && field.name === 'type') {
+      return null;
+    }
 
     switch (field.type) {
       case 'text':
@@ -181,14 +247,16 @@ const GenericDataGrid = ({
           <FormControl fullWidth error={touched[field.name] && Boolean(errors[field.name])}>
             <InputLabel>{field.label}{field.required ? ' *' : ''}</InputLabel>
             <Select
-              name={field.name}
-              value={values[field.name] || ''}
-              onChange={handleChange}
-              label={`${field.label}${field.required ? ' *' : ''}`}
-             >
+              {...commonProps}
+              multiple={field.multiple || false}
+              renderValue={field.multiple ? (selected) => selected.join(', ') : undefined}
+            >
               {field.options.map(option => (
                 <MenuItem key={option.value} value={option.value}>
-                  {option.label}
+                  {field.multiple && (
+                    <Checkbox checked={values[field.name]?.includes(option.value) || false} />
+                  )}
+                  <ListItemText primary={option.label} />
                 </MenuItem>
               ))}
             </Select>
@@ -225,42 +293,86 @@ const GenericDataGrid = ({
   };
 
   // Prepare rows for DataGrid with value getters and custom renderers
-  const preparedRows = filteredData.map(item => {
-    const row = { id: item.code || item.id, ...item };
+  const preparedRows = Array.isArray(filteredData)
+    ? filteredData
+      .map(item => {
+        if (!item) return null; // Handle null/undefined items
 
-    // Apply value getters
-    Object.entries(valueGetters).forEach(([field, getter]) => {
-      row[field] = getter(item);
-    });
+        try {
+          const row = {
+            id: item.code || item.id || '', // Fallback to empty string if both are falsy
+            ...item
+          };
 
-    return row;
-  });
+          // Safely apply value getters
+          if (valueGetters) {
+            Object.entries(valueGetters).forEach(([field, getter]) => {
+              try {
+                row[field] = typeof getter === 'function'
+                  ? getter(item)
+                  : item[field];
+              } catch (error) {
+                console.error(`Error applying getter for field ${field}:`, error);
+                row[field] = null;
+              }
+            });
+          }
+
+          // Add formatted employee type if available
+          if (employeeType) {
+            row.employeeType = employeeType.length > 0
+              ? employeeType.charAt(0).toUpperCase() + employeeType.slice(1).toLowerCase()
+              : '';
+          }
+
+          return row;
+        } catch (error) {
+          console.error('Error preparing row:', error, item);
+          return null;
+        }
+      })
+      .filter(Boolean) // Remove null entries
+    : []; // If filteredData is null/undefined, return an empty array
+
 
   // Prepare columns for DataGrid with custom renderers
-  const preparedColumns = columns.map(column => {
-    if (customRenderers[column.field]) {
-
-      return {
-        ...column,
-        renderCell: (params) => customRenderers[column.field](params)
-      };
-    }
-    return column;
-  }).concat([
+  const preparedColumns = [
+    ...columns.map(column => {
+      if (customRenderers[column.field]) {
+        return {
+          ...column,
+          renderCell: (params) => customRenderers[column.field](params)
+        };
+      }
+      return column;
+    }),
     {
       field: 'actions',
       headerName: 'Actions',
       width: 150,
       renderCell: (params) => (
         <ActionMenu
-          rowId={params.row.code || params.row.id}
+          pathe={pathe}
+          rowId={params.row.id}
           onRefetch={() => setRefetch(prev => !prev)}
           additionalActions={additionalActions}
           customHandlers={customHandlers}
+          employeeType={employeeType}
+          detailPagePath={detailPagePath}
         />
       ),
     }
-  ]);
+  ];
+
+  // Add employee type column if this is an employee grid
+  if (employeeType) {
+    preparedColumns.splice(1, 0, {
+      field: 'employeeType',
+      headerName: 'Type',
+      width: 120,
+      valueGetter: () => employeeType.charAt(0).toUpperCase() + employeeType.slice(1),
+    });
+  }
 
   return (
     <>
@@ -287,6 +399,7 @@ const GenericDataGrid = ({
           checkboxSelection
           getRowId={(row) => row.code || row.id}
           disableRowSelectionOnClick
+          loading={isLoading}
           initialState={{
             pagination: {
               paginationModel: {
@@ -302,7 +415,7 @@ const GenericDataGrid = ({
           slots={{
             toolbar: () => (
               <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '15px' }}>
-                {(user?.role.toLowerCase() === "receptionist" || user?.role.toLowerCase() === 'doctor') && (
+                {shouldShowNewButton() && (
                   <Button
                     onClick={handleOpen}
                     sx={{
@@ -316,7 +429,7 @@ const GenericDataGrid = ({
                     variant="contained"
                     startIcon={<AddCircleOutlineIcon />}
                   >
-                    New {modelName}
+                    New {subModelName?subModelName:modelName}
                   </Button>
                 )}
                 <GridToolbar />
@@ -354,9 +467,14 @@ const GenericDataGrid = ({
             borderRadius: '8px',
           }}
         >
-          <Typography id="modal-title" textAlign='center' variant="h4">
-            Add New {modelName}
+          <Typography id="modal-title" sx={{color:theme.palette.primary[100]}} textAlign='center' variant="h4">
+            Add New {subModelName?subModelName:modelName}
           </Typography>
+          {employeeType && (
+            <Typography textAlign='center' variant="subtitle1" color="textSecondary" sx={{ mb: 2 }}>
+              {employeeType.charAt(0).toUpperCase() + employeeType.slice(1)}
+            </Typography>
+          )}
           <Formik
             initialValues={formData}
             validationSchema={validationSchema}

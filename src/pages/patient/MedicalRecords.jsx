@@ -143,6 +143,7 @@ const MedicalRecords = ({ patient }) => {
               ...test,
               patientid: patient.id, // Include in each test
               remark: test.remark || "", // Replace null
+              patienthistoryid:response.data.id
             })),
           });
         } catch (labError) {
@@ -176,8 +177,8 @@ const MedicalRecords = ({ patient }) => {
       })
     }
   }
-  const handleView = (id) => {
-    setModalContent(`Content for ID: ${id}`);
+  const handleView = (record) => {
+    setModalContent(record);
 
     setOpenHistoryModal(true); // Open the modal when the "View" button is clicked
 };
@@ -188,12 +189,17 @@ const MedicalRecords = ({ patient }) => {
     setopenModal((prev)=>!prev);
   };
 
-  const filteredHistory = patientHistory.filter((record) => {
-    if (!filterStartDate) return true;
+  const filteredHistory = Array.isArray(patientHistory) && patientHistory.length > 0
+    ? patientHistory
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .filter((record) => {
+        if (!filterStartDate) return true;
 
-    const recordDate = new Date(record.createdAt).toISOString().split('T')[0];
-    return filterStartDate ? recordDate >= filterStartDate : true;
-  });
+        const recordDate = new Date(record.createdAt).toISOString().split('T')[0];
+        return recordDate === filterStartDate; // Exact date match
+        // Or for date range: return recordDate >= filterStartDate;
+      })
+    : []; // Return an empty array if patientHistory is empty or not an array
 
   return (
     <>
@@ -296,7 +302,7 @@ const MedicalRecords = ({ patient }) => {
                           p: 3.2,
                           '&:hover': { backgroundColor: 'white' }
                         }}
-                        onClick={() => handleView(record.id)}
+                        onClick={() => handleView(record)}
                       >
                         <Visibility />
                       </IconButton>
@@ -344,7 +350,12 @@ const MedicalRecords = ({ patient }) => {
       )}
 
       {openHistoryModal && (
-        <PatientHistoryModal open={openHistoryModal} onClose={handleClose} patient={patient} />
+        <PatientHistoryModal
+          open={openHistoryModal}
+          onClose={handleClose}
+          patient={patient}
+          record={modalContent}
+        />
 
       )}
     </>

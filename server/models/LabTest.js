@@ -19,6 +19,16 @@ const LabTest = sequelize.define('LabTest', {
     onUpdate: 'CASCADE',
     onDelete: 'SET NULL', // In case the patient is deleted, set patientid to NULL
   },
+  patienthistoryid: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'patient_histories', // Name of the PatientHistory table
+      key: 'id',
+    },
+    onUpdate: 'CASCADE',
+    onDelete: 'SET NULL',
+  },
   name: {
     type: DataTypes.STRING,
     allowNull: false,

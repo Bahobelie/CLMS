@@ -16,7 +16,7 @@ import PatientHistoryDetails from './PatientHistoryDetails';
 import EmergencyLabReport from './EmergencyLabReport';
 import PatientLabTest from './PatientLabTest';
 
-const PatientHistoryDialog = ({ open, onClose, patient }) => {
+const PatientHistoryDialog = ({ open, onClose, patient,record }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -102,6 +102,7 @@ const PatientHistoryDialog = ({ open, onClose, patient }) => {
               }}>
                 <PatientLabTest
                   patient={patient}
+                  record={record}
                   sx={{
                     flex: 1,
                     minHeight: 0, // Allows the component to shrink

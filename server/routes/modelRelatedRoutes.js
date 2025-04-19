@@ -1,7 +1,7 @@
 const express = require('express');
 const generateNextId = require('../services/generateNextId');
 const router = express.Router();
-const {Admin,patientSchema,patientHistorySchema,LabReport,LabTest,UltarSound,SystemConstant,Prescription} = require('.././models');
+const {Admin,employeeSchema,patientSchema,patientHistorySchema,LabReport,LabTest,UltarSound,SystemConstant,Prescription,Appointment} = require('.././models');
 
 const {Patient}=require('../models');
   const models = {
@@ -12,7 +12,9 @@ const {Patient}=require('../models');
       LabTest,
       UltarSound,
       SystemConstant,
-      Prescription
+      Prescription,
+      Appointment,
+     employeeSchema,
   };
 
 router.get('/next-code', async (req, res) => {

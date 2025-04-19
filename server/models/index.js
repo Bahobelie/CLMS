@@ -6,7 +6,8 @@ const Prescription = require('.././models/Prescription');
 const SystemConstant = require('.././models/SystemConstant');
 const UltarSound = require('.././models/UltarSound');
 const LabReport = require('.././models/LabReport');
-
+const Appointment =require('.././models/Appointment');
+const employeeSchema=require('.././models/Employee');
 
 module.exports = {
   Admin,
@@ -16,5 +17,7 @@ module.exports = {
   Prescription,
   SystemConstant,
   UltarSound,
-  LabReport
+  LabReport,
+  Appointment,
+  employeeSchema
 };

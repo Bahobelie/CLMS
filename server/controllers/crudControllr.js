@@ -1,3 +1,5 @@
+const { raw } = require('express');
+const { Op } = require('sequelize');
 
 class crudControllr {
   constructor(service) {
@@ -80,11 +82,33 @@ class crudControllr {
       try {
         const condition = req.query; // Assuming condition is passed in parameter
 
-        console.log('condition',condition)
+
+        if (req.query.createdAt) {
+          // Validate date format (YYYY-MM-DD)
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(req.query.createdAt)) {
+            return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD" });
+          }
+
+          const dateOnly = req.query.createdAt; // "2025-04-15"
+
+
+          // Convert to proper date range
+          condition.createdAt = {
+            [Op.between]: [
+              new Date(`${dateOnly}T00:00:00.000Z`), // Start of day (UTC)
+              new Date(`${dateOnly}T23:59:59.999Z`)  // End of day (UTC)
+            ]
+          };
+        };
+
+
         const items = await this.service.findByCondition(condition);
 
-        if (!items || items.length === 0) {
-          return res.status(404).json({ error: "No items found matching the condition" });
+        if (!items?.length) {
+          return res.status(200).json({
+            message: "No items found",
+            query: condition
+          });
         }
 
         res.status(200).json(items);

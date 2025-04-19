@@ -18,15 +18,13 @@ import {
 } from '@mui/material';
 import axios from 'axios';
 import { useTheme } from '@mui/material/styles';
-import generateNextId from '../../../server/services/generateNextId';
 
-const EditLabTestModal = ({ open, onClose, test, onSave, apiUrl,patient}) => {
-  const theme=useTheme();
-
-  const code= generateNextId('LabTest', 'LT-');
-
+const EditLabTestModal = ({ open, onClose, test, onSave, apiUrl, patient,record }) => {
+  const theme = useTheme();
+  const [code, setCode] = useState('');
   const [formData, setFormData] = useState({
-    patientid:patient.id,
+    patientid: patient.id,
+    patienthistoryid:record.id,
     code: '',
     name: '',
     description: '',
@@ -40,36 +38,63 @@ const EditLabTestModal = ({ open, onClose, test, onSave, apiUrl,patient}) => {
   const [error, setError] = useState(null);
   const [testOptions, setTestOptions] = useState([]);
 
+  // Reset form when opening/closing or when test changes
   useEffect(() => {
-    if (test) {
-      setFormData({
-        patientid:patient.id,
-        code: code.data.code || '',
-        name: test.name || '',
-        description: test.description || '',
-        price: test.price || 0,
-        status: 'pending',
-        result: test.result || '',
-        referencerange: test.referencerange || '',
-        remark: test.remark || ''
-      });
-    }
+    if (!open) return; // Don't reset if dialog is closed
 
-    // Fetch available test templates
-    const fetchTestTemplates = async () => {
+    const resetForm = async () => {
       try {
-        const response = await axios.get(`${apiUrl}/systemconstants/by-condition`,{
-          params:{
-            type:'LabTest'
-          }
-        });
-        setTestOptions(response.data);
+        const [templatesResponse, codeResponse] = await Promise.all([
+          axios.get(`${apiUrl}/systemconstants/by-condition`, {
+            params: { type: 'LabTest' }
+          }),
+          axios.get(`${apiUrl}/model/next-code`, {
+            params: { model: `LabTest`, prefix: 'LT-' }
+          })
+        ]);
+
+        setTestOptions(templatesResponse.data);
+        setCode(codeResponse.data.code);
+
+        if (test) {
+          // Edit mode - use existing test data
+          setFormData({
+            patientid: patient.id,
+            code: test.code || codeResponse.data.code,
+            isactive:true,
+            patienthistoryid:record.id,
+            name: test.name || '',
+            description: test.description || '',
+            price: test.price || 0,
+            status: test.status || 'pending',
+            result: test.result || '',
+            referencerange: test.referencerange || '',
+            remark: test.remark || ''
+          });
+        } else {
+          // Add mode - reset to default values with new code
+          setFormData({
+            patientid: patient.id,
+            code: codeResponse.data.code,
+            patienthistoryid:record.id,
+            isactive:true,
+            name: '',
+            description: '',
+            price: 0,
+            status: 'pending',
+            result: '',
+            referencerange: '',
+            remark: ''
+          });
+        }
       } catch (err) {
-        console.error('Error fetching test templates:', err);
+        console.error('Error initializing form:', err);
+        setError('Failed to initialize form data');
       }
     };
-    fetchTestTemplates();
-  }, [test, apiUrl]);
+
+    resetForm();
+  }, [open, test, apiUrl, patient.id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -81,24 +106,25 @@ const EditLabTestModal = ({ open, onClose, test, onSave, apiUrl,patient}) => {
 
   const handleTestTemplateChange = (e) => {
     const selectedTemplate = testOptions.find(t => t.id === e.target.value);
+
     if (selectedTemplate) {
-      setFormData({
-        ...formData,
-        code: code.data.code,
+      setFormData(prev => ({
+        ...prev,
         name: selectedTemplate.name,
         description: selectedTemplate.description,
-        price: selectedTemplate.price,
+        price: selectedTemplate.amount,
         referencerange: selectedTemplate.referencerange
-      });
+      }));
     }
   };
 
   const handleSubmit = async () => {
     setLoading(true);
     setError(null);
-    try {
-      console.log('formData',formData);
 
+    console.log('formdata',test);
+
+    try {
       if (test && test.id) {
         // Update existing test
         await axios.put(`${apiUrl}/labTests/${test.id}`, formData);
@@ -118,7 +144,7 @@ const EditLabTestModal = ({ open, onClose, test, onSave, apiUrl,patient}) => {
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle sx={{color:theme.palette.primary[100],textAlign: 'center'}}>
+      <DialogTitle sx={{ color: theme.palette.primary[100], textAlign: 'center' }}>
         {test ? 'Edit Lab Test' : 'Add New Lab Test'}
       </DialogTitle>
       <DialogContent dividers>
@@ -137,7 +163,11 @@ const EditLabTestModal = ({ open, onClose, test, onSave, apiUrl,patient}) => {
                 label="Test Template"
                 onChange={handleTestTemplateChange}
                 disabled={!!test}
+                value=""
               >
+                <MenuItem value="">
+                  <em>Select a template</em>
+                </MenuItem>
                 {testOptions.map((option) => (
                   <MenuItem key={option.id} value={option.id}>
                     {option.name} ({option.code})
@@ -156,6 +186,7 @@ const EditLabTestModal = ({ open, onClose, test, onSave, apiUrl,patient}) => {
               value={formData.code}
               onChange={handleChange}
               required
+              disabled={!!test} // Disable code editing in edit mode
             />
           </Grid>
           <Grid item xs={12} md={6}>

@@ -38,12 +38,6 @@ class LabTestService extends CrudService {
     const transaction = await this.model.sequelize.transaction();
 
     try {
-      // STEP 1: Deactivate all existing lab tests for this patient
-      await this.model.update(
-        { isactive: false },
-        { where: { patientid }, transaction }
-      );
-
 
       // STEP 2: Bulk insert new lab tests (default isActive: true)
       const newTests = await this.model.bulkCreate(
