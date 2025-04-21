@@ -16,31 +16,14 @@ router.put('/:id', UltraSoundController.update);
 router.delete('/:id', UltraSoundController.delete);
 router.get('/by-code/:code', UltraSoundController.getByCode);
 
-// Multer upload middleware
-const upload = UltraSoundService.upload;
-// Image Upload Route
-router.post(
-  "/upload/:id",
-  upload.single("image"),
-  async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ message: "No file uploaded" });
-      }
-
-      const updatedTest = await UltraSoundService.uploadImage(
-        req.params.id,
-        req.file.path
-      );
-
-      res.status(200).json({
-        message: "Image uploaded successfully",
-        filePath: req.file.path,
-        updatedTest
-      });
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
+router.post('/upload', UltraSoundService.getUploadMiddleware(), async (req, res) => {
+  try {
+    const result = await UltraSoundServices.create(req.body, req.file?.path);
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
-);
+});
+
+
 module.exports = router;

@@ -1,20 +1,20 @@
 const express = require('express');
 const generateNextId = require('../services/generateNextId');
 const router = express.Router();
-const {Admin,employeeSchema,patientSchema,patientHistorySchema,LabReport,LabTest,UltarSound,SystemConstant,Prescription,Appointment} = require('.././models');
+const {Admin,employee,patient,patientHistory,LabReport,LabTest,ultarsound,systemconstant,Prescription,Appointment} = require('.././models');
 
 const {Patient}=require('../models');
   const models = {
       Admin,
-      patientSchema,
-      patientHistorySchema,
+      patient,
+      patientHistory,
       LabReport,
       LabTest,
-      UltarSound,
-      SystemConstant,
+      ultarsound,
+      systemconstant,
       Prescription,
       Appointment,
-     employeeSchema,
+     employee,
   };
 
 router.get('/next-code', async (req, res) => {
@@ -33,7 +33,7 @@ router.get('/next-code', async (req, res) => {
     res.json({ code: nextCode });
   } catch (error) {
     console.log(error.message);
-    res.status(500).json({ error: 'Error generating code' });
+    res.status(500).json({ error: 'Error generating code',error });
   }
 });
 

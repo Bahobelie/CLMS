@@ -99,10 +99,10 @@ const GenericDataGrid = ({
       console.log("API response:", response);
       setData(response.data || []);
     } catch (error) {
-      console.error(`Error fetching ${subModelName?subModelName:modelName}:`, error);
+      console.error(`Error fetching ${modelName}:`, error);
       await Swal.fire({
         title: 'Error!',
-        text: `Failed to load ${subModelName ? subModelName : modelName} data`,
+        text: `Failed to load ${modelName} data`,
         icon: 'error',
         timer: 3000,
       });
@@ -113,7 +113,6 @@ const GenericDataGrid = ({
 
   useEffect(() => {
     fetchData();
-    console.log('value eters',valueGetters)
   }, [refetch, employeeType]);
 
   // Handle search filtering
@@ -137,14 +136,15 @@ const GenericDataGrid = ({
   // Generate model name for code generation based on employee type
   const getModelForCodeGeneration = () => {
     if (employeeType) {
-      return `${employeeType}Schema`; // e.g. "doctorSchema" or "receptionistSchema"
+      return `${employeeType}`; // e.g. "doctorSchema" or "receptionistSchema"
     }
-    return `${modelName.toLowerCase()}Schema`;
+    return `${modelName.toLowerCase()}`;
   };
 
   // Modal handlers
   const handleOpen = async () => {
     try {
+
       const response = await axios.get(`${apiUrl}/model/next-code`, {
         params: {
           model: getModelForCodeGeneration(),
@@ -162,7 +162,7 @@ const GenericDataGrid = ({
       setOpen(true);
     } catch (error) {
       console.error('Error generating code:', error);
-      Swal.fire({
+      await Swal.fire({
         title: 'Error!',
         text: 'Failed to generate code',
         icon: 'error',
@@ -189,7 +189,6 @@ const GenericDataGrid = ({
         payload.type = employeeType.toUpperCase();
       }
 
-      console.log('payloda',payload);
 
       // Call custom submit handler if provided
       if (customHandlers.onSubmit) {
@@ -354,6 +353,7 @@ const GenericDataGrid = ({
         <ActionMenu
           pathe={pathe}
           rowId={params.row.id}
+          code={params.row.code}
           onRefetch={() => setRefetch(prev => !prev)}
           additionalActions={additionalActions}
           customHandlers={customHandlers}
@@ -367,8 +367,8 @@ const GenericDataGrid = ({
   // Add employee type column if this is an employee grid
   if (employeeType) {
     preparedColumns.splice(1, 0, {
-      field: 'employeeType',
-      headerName: 'Type',
+      field: 'type',
+      headerName: 'Employment Type',
       width: 120,
       valueGetter: () => employeeType.charAt(0).toUpperCase() + employeeType.slice(1),
     });
@@ -468,7 +468,7 @@ const GenericDataGrid = ({
           }}
         >
           <Typography id="modal-title" sx={{color:theme.palette.primary[100]}} textAlign='center' variant="h4">
-            Add New {subModelName?subModelName:modelName}
+            Add New {modelName}
           </Typography>
           {employeeType && (
             <Typography textAlign='center' variant="subtitle1" color="textSecondary" sx={{ mb: 2 }}>

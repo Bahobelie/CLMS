@@ -2,12 +2,37 @@ import GenericDataGrid from '../component-overview/GenericDataGrid';
 import WorkIcon from '@mui/icons-material/Work';
 import * as Yup from 'yup';
 import { Box } from '@mui/material';
+import { useEffect, useState } from 'react';
+import axios from 'axios';
 
-const Employee = ({subModel,params,detailpathe}) => {
+const Employee = ({params}) => {
+  const apiUrl = import.meta.env.VITE_APP_API_URL;
+  const [employmentTypes,setEmploymentType] = useState([]);
 
+  useEffect(() => {
+    const employmentType =async ()=>{
+      const response = await axios.get(`${apiUrl}/systemConstants/by-condition`, {
+        params: {
+          type: 'Employee'
+        }
+      });
+      setEmploymentType(response.data)
+    }
+    employmentType();
+  }, []);
   const employeeFormFields = [
     { name: 'firstname', label: 'First Name', type: 'text', required: true },
     { name: 'lastname', label: 'Last Name', type: 'text', required: true },
+    {
+      name: 'type',
+      label: 'Employment Type',
+      type: 'select',
+      options: employmentTypes.map(type => ({
+        value: type.id,
+        label: type.name
+      })),
+      required: true
+    },
     {
       name: 'status',
       label: 'Status',
@@ -72,6 +97,7 @@ const Employee = ({subModel,params,detailpathe}) => {
   const employeeValidationSchema = Yup.object({
     firstname: Yup.string().required("First Name is required"),
     lastname: Yup.string().required("Last Name is required"),
+    type:Yup.number().required("Employee Type is required"),
     specialization: Yup.string(),
     phonenumber: Yup.string(),
     email: Yup.string().email("Invalid email format"),
@@ -91,7 +117,7 @@ const Employee = ({subModel,params,detailpathe}) => {
   const initialEmployeeValues = {
     firstname: '',
     lastname: '',
-    type:params.type,
+    type:null,
     specialization: '',
     phonenumber: '',
     email: '',
@@ -118,6 +144,11 @@ const Employee = ({subModel,params,detailpathe}) => {
       flex: 2
     },
     {
+      field: 'type',
+      headerName: "Employment Type",
+      flex: 2
+    },
+    {
       field: 'specialization',
       headerName: 'Specialization',
       width: 180,
@@ -127,7 +158,7 @@ const Employee = ({subModel,params,detailpathe}) => {
       field: 'phonenumber',
       headerName: 'Phone Number',
       width: 150,
-      flex: 1
+      flex: 2
     },
     {
       field: 'email',
@@ -195,19 +226,22 @@ const Employee = ({subModel,params,detailpathe}) => {
 
   const receptionValueGetters = {
     fullName: (employee) => `${employee.firstname || ''} ${employee.lastname || ''}`,
+    type: (employee) => {
+      const type = employmentTypes.find(t => t.id === employee.type);
+      return type ? type.name : 'Unknown';
+    }
   };
 
   return (
     <GenericDataGrid
-      title={subModel}
+      title='Employees'
       icon={<WorkIcon />}
       pathe='employees'
       apiEndpoint="employees"
-      modelName="Employee"
+      modelName="employee"
       prefix="EMP-"
       valueGetters={receptionValueGetters}
-      detailPagePath={`/${detailpathe}`}
-      subModelName={subModel}
+      detailPagePath={`/employee-details`}
       params={params} // Your reception type filter
       columns={employeeColumns}
       initialFormValues={initialEmployeeValues}

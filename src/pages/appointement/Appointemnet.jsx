@@ -52,7 +52,7 @@ const AppointmentCalendar = ({ patient }) => {
     notes: '',
     patientId: patient?.id || '',
     code: '',
-    doctor: doctors[0]
+    doctor:null
   });
 
   // Fetch appointments from API
@@ -66,8 +66,10 @@ const AppointmentCalendar = ({ patient }) => {
             type:TypeDoctor
           }
         });
+
         setAppointments(response.data);
-        setDoctors(doctor.data)
+        setDoctors(doctor.data);
+        console.log('doctors',doctor)
 
       } catch (error) {
         console.error('Error fetching appointments:', error);
@@ -98,10 +100,11 @@ const AppointmentCalendar = ({ patient }) => {
     if (patient?.id) {
       setNewAppointment(prev => ({
         ...prev,
-        patientId: patient.id
+        patientId: patient.id,
+        doctor: doctors[0]
       }));
     }
-  }, [patient]);
+  }, [patient,doctors]);
 
   const handlePrev = () => {
     const newDate = new Date(currentDate);
@@ -209,6 +212,8 @@ const AppointmentCalendar = ({ patient }) => {
         return;
       }
 
+      console.log('new',newAppointment);
+
       const appointment = {
         code: appointmentCode,
         patientId: patient.id,
@@ -218,8 +223,6 @@ const AppointmentCalendar = ({ patient }) => {
         notes: newAppointment.notes || '',
         doctorid: newAppointment.doctor.id
       };
-
-      console.log('docror',newAppointment.doctor)
 
       await axios.post(`${apiUrl}/appointments`, appointment);
 

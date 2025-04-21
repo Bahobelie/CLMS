@@ -19,11 +19,19 @@ app.use(cors());
 
 app.use(express.json()); // Middleware for JSON parsing
 app.use(morgan("combined")); // Middleware for logging all request
+app.use(express.urlencoded({ extended: true }));
+
+// Serve static files from the 'uploads' directory
+const path = require('path');
+
+
+
+
 
 // Use the generated routes
 app.use('/api/admins', adminRoutes);
 app.use('/api/labTests', labTestRoutes);
-app.use('/api/ultarSounds', ultraSoundRoutes);
+app.use('/api/ultarsounds', ultraSoundRoutes);
 app.use('/api/systemConstants', systemConstantRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/patientHistorys', patientHistoryRoutes);

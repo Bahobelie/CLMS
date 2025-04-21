@@ -9,7 +9,7 @@ import PatientDetail from '../component/PatientDetail';
 import Swal from 'sweetalert2';
 import axios from 'axios';
 
-const ActionMenu = ({ rowId,onRefetch,detailPagePath,pathe }) => {
+const ActionMenu = ({ rowId,code,onRefetch,detailPagePath,pathe }) => {
   const [anchorEl, setAnchorEl] = useState(null); // State to control menu visibility
   const theme = useTheme();
   const Navigate=useNavigate();
@@ -29,7 +29,7 @@ const ActionMenu = ({ rowId,onRefetch,detailPagePath,pathe }) => {
 
   // Handle Edit action
   const handleEdit = () => {
-    Navigate(`${detailPagePath}/${rowId}`)
+    Navigate(`${detailPagePath}/${code}`)
     handleCloseMenu(); // Close the menu after action
   };
 

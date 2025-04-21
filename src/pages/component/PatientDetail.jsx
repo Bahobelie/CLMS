@@ -36,6 +36,9 @@ import Swal from 'sweetalert2';
 import PatientHealtInfo from '../patient/PatientHealtInfo';
 import MedicalRecords from '../patient/MedicalRecords';
 import AppointmentCalendar from '../appointement/Appointemnet';
+import LabTestsTable from '../patient/PaymentReson';
+import LabTestsView from '../patient/LabTestsView';
+import PatientImages from '../patient/PatientImages';
 
 const PatientDetail = () => {
   const theme = useTheme();
@@ -47,6 +50,8 @@ const PatientDetail = () => {
   const [editMode, setEditMode] = useState(false);
   const navigate = useNavigate();
 
+  let userRole = localStorage.getItem('userRole'); // Assuming the role is stored as 'userRole'
+
   const fetchPatient = async () => {
     try {
       setLoading(true);
@@ -54,7 +59,7 @@ const PatientDetail = () => {
       setPatient(response.data[0]);
     } catch (error) {
       console.error('Error fetching patient details:', error);
-      Swal.fire({
+      await Swal.fire({
         title: 'Error!',
         text: 'Failed to fetch patient data',
         icon: 'error',
@@ -148,24 +153,17 @@ const PatientDetail = () => {
       case 2: // Invoice
         return (
           <CardContent>
-            <Typography variant="h5" gutterBottom>Payment History</Typography>
-            <Typography color="textSecondary">Payment details will be displayed here.</Typography>
+            <LabTestsTable patient={patient}/>
           </CardContent>
         );
       case 3: // Image
         return (
           <CardContent>
-            <Typography variant="h5" gutterBottom>Patient Images</Typography>
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-              <Avatar
-                src={defaultAvatar}
-                sx={{
-                  width: 200,
-                  height: 200,
-                  border: `4px solid ${theme.palette.primary.main}`
-                }}
-              />
-            </Box>
+            <PatientImages
+            patient={patient}
+            apiUrl={apiUrl}
+            refreshPatient={fetchPatient}
+            />;
           </CardContent>
         );
       case 4: // Patient Information
@@ -359,7 +357,13 @@ const PatientDetail = () => {
           </CardContent>
         );
       case 6: // Health Info
-        return <PatientHealtInfo patient={patient} handleUpdate={handleUpdate} />;
+        return <PatientHealtInfo patient={patient} handelUpdate={handleUpdate} />;
+      case 7: // Lab Tests
+        return (
+          <CardContent>
+            <LabTestsView patient={patient} />
+          </CardContent>
+        );
       default:
         return null;
     }
@@ -501,11 +505,13 @@ const PatientDetail = () => {
                 {[
                   { label: 'Medical Records', icon: <MedicalServicesIcon /> },
                   { label: 'Appointments', icon: <CalendarIcon /> },
-                  { label: 'Payments', icon: <ReceiptIcon /> },
+                  { label: 'Payment Reason', icon: <ReceiptIcon /> },
                   { label: 'Images', icon: <ImageIcon /> },
                   { label: 'Information', icon: <PersonIcon /> },
                   { label: 'Prescriptions', icon: <PrescriptionIcon /> },
-                  { label: 'Health Info', icon: <HealthIcon /> }
+                  { label: 'Health Info', icon: <HealthIcon /> },
+                  { label: 'Lab Tests', icon: <MedicalServicesIcon /> },
+
                 ].map((tab, index) => (
                   <Tab
                     key={index}

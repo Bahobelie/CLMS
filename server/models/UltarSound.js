@@ -17,6 +17,10 @@ const Ultrasound = sequelize.define('Ultrasound', {
                         key: 'id',
                 },
         },
+                name:{
+                        type: DataTypes.STRING,
+                        allowNull: false,
+                },
         imageUrl: {
                 type: DataTypes.STRING,
                 allowNull: true,

@@ -41,7 +41,7 @@ const validationSchema = Yup.object().shape({
   availabilitydays: Yup.array()
 });
 
-const EmployeeDetail = ({navigationPath}) => {
+const EmployeeDetail = () => {
   const { code } = useParams();
   const navigate = useNavigate();
   const theme = useTheme();
@@ -499,7 +499,7 @@ const EmployeeDetail = ({navigationPath}) => {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
         <Tooltip title="Back to employees">
           <IconButton
-            onClick={() => navigate(`/${navigationPath}`)}
+            onClick={() => navigate(`/employees`)}
             size="large"
             sx={{ backgroundColor: theme.palette.grey[200] }}
           >
