@@ -1,29 +1,36 @@
 // assets
 import { AiOutlineHome, AiOutlineUsergroupAdd } from 'react-icons/ai';
-import { LuUserPen } from 'react-icons/lu';
-import { RiUserHeartLine, RiMedicineBottleLine } from 'react-icons/ri';
-import { MdDateRange, MdPayment } from 'react-icons/md';
+import { LuUsers } from "react-icons/lu";
+import { RiMedicineBottleLine } from 'react-icons/ri';
+import { MdDateRange } from 'react-icons/md';
 import { LiaFileInvoiceSolid } from 'react-icons/lia';
 import { SiMockserviceworker } from 'react-icons/si';
 import { IoSettingsOutline } from 'react-icons/io5';
+import { UnorderedListOutlined } from '@ant-design/icons';
+import { RiGroupLine } from "react-icons/ri";
+import { TbUserHeart } from "react-icons/tb";
+import { MdOutlinePayments } from "react-icons/md";
+import { RiServiceLine } from "react-icons/ri";
 
 // icons
 const icons = {
   AiOutlineHome,
   AiOutlineUsergroupAdd,
-  LuUserPen,
-  RiUserHeartLine,
+  LuUsers,
+  RiGroupLine,
   MdDateRange,
-  MdPayment,
   LiaFileInvoiceSolid,
   SiMockserviceworker,
   RiMedicineBottleLine,
-  IoSettingsOutline
+  IoSettingsOutline,
+  UnorderedListOutlined,
+  TbUserHeart,
+  MdOutlinePayments,
+  RiServiceLine
 };
 
-// ==============================|| MENU ITEMS - DASHBOARD ||============================== //
-
-const dashboard = {
+// Default menu items (will be filtered based on permissions)
+const defaultMenuItems = {
   id: 'group-dashboard',
   type: 'group',
   children: [
@@ -33,81 +40,57 @@ const dashboard = {
       type: 'item',
       url: '/dashboard/default',
       icon: icons.AiOutlineHome,
-      breadcrumbs: false
+      breadcrumbs: true
     },
     {
       id: 'patients',
-      title: 'Patients',
+      title: 'Patient',
       type: 'item',
       url: '/patients',
-      icon: icons.AiOutlineUsergroupAdd, // Use TeamOutlined for Patients
-      breadcrumbs: false
+      icon: icons.LuUsers,
+      breadcrumbs: true
     },
     {
-      id: 'receptions',
-      title: 'Receptions',
+      id: 'Employee',
+      title: 'Employee',
       type: 'item',
-      url: '/receptions',
-      icon: icons.LuUserPen,
-      breadcrumbs: false
+      url: '/employees',
+      icon: icons.RiGroupLine,
+      breadcrumbs: true
     },
     {
-      id: 'doctor',
-      title: 'Doctor',
+      id: 'Services',
+      title: 'Services',
       type: 'item',
-      url: '/doctor',
-      icon: icons.RiUserHeartLine,
+      url: '/services',
+      icon: icons.RiServiceLine,
       breadcrumbs: false
     },
     {
-      id: 'appointment',
-      title: 'Appointment',
-      type: 'item',
-      url: '/appointment',
-      icon: icons.MdDateRange,
-      breadcrumbs: false
-    },
-    {
-      id: 'payment',
-      title: 'Payment',
-      type: 'item',
-      url: '/payment',
-      icon: icons.MdPayment,
-      breadcrumbs: false
-    },
-    {
-      id: 'invoice',
-      title: 'Invoice',
-      type: 'item',
-      url: '/invoice',
-      icon: icons.LiaFileInvoiceSolid,
-      breadcrumbs: false
-    },
-    {
-      id: 'service',
-      title: 'Service',
-      type: 'item',
-      url: '/service',
-      icon: icons.SiMockserviceworker,
-      breadcrumbs: false
-    },
-    {
-      id: 'medicine',
+      id: 'Medicine',
       title: 'Medicine',
       type: 'item',
-      url: '/medicine',
+      url: '/medicines',
       icon: icons.RiMedicineBottleLine,
+      breadcrumbs: true
+    },
+    {
+      id: 'Setting',
+      title: 'Settings',
+      type: 'item',
+      url: '/settings',
+      icon: icons.IoSettingsOutline,
       breadcrumbs: false
     },
     {
-      id: 'setting',
-      title: 'Setting',
+      id: 'Report',
+      title: 'Report',
       type: 'item',
-      url: '/setting',
-      icon: icons.IoSettingsOutline,
+      url: '/reports',
+      icon: icons.UnorderedListOutlined,
       breadcrumbs: false
     }
   ]
 };
 
-export default dashboard;
+export default defaultMenuItems;

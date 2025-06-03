@@ -1,15 +1,16 @@
-// material-ui
-import Typography from '@mui/material/Typography';
-import Box from '@mui/material/Box';
-
-// project import
+import { Box, Typography } from '@mui/material';
 import NavGroup from './NavGroup';
-import menuItem from 'menu-items';
 
-// ==============================|| DRAWER CONTENT - NAVIGATION ||============================== //
+import Loader from 'components/Loader';
+import useMenuItems from '../../../../../menu-items';
 
 export default function Navigation() {
-  const navGroups = menuItem.items.map((item) => {
+  let userRole = localStorage.getItem('userRole');
+  const { menuItems, loading } = useMenuItems(userRole);
+
+  if (loading) return <Loader />;
+
+  const navGroups = menuItems.map((item) => {
     switch (item.type) {
       case 'group':
         return <NavGroup key={item.id} item={item} />;

@@ -13,6 +13,7 @@ import Typography from '@mui/material/Typography';
 
 // project import
 import { handlerActiveItem, useGetMenuMaster } from 'api/menu';
+import { useSelector } from 'react-redux';
 
 export default function NavItem({ item, level }) {
   const theme = useTheme();
@@ -20,6 +21,12 @@ export default function NavItem({ item, level }) {
   const { menuMaster } = useGetMenuMaster();
   const drawerOpen = menuMaster.isDashboardDrawerOpened;
   const openItem = menuMaster.openedItem;
+
+  // Get user role from localStorage
+  let userRole = localStorage.getItem('userRole'); // Assuming 'userRole' is stored in localStorage
+
+  const user = useSelector((state) => state.auth.user);
+
 
   let itemTarget = '_self';
   if (item.target) {
@@ -33,6 +40,7 @@ export default function NavItem({ item, level }) {
   const Icon = item.icon;
   const itemIcon = item.icon ? <Icon style={{ color: theme.palette.primary[100], fontSize: drawerOpen ? '1.27rem' : '1.25rem' }} /> : false;
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const { pathname } = useLocation();
   const isSelected = !!matchPath({ path: item.url, end: false }, pathname) || openItem === item.id;
 

@@ -1,6 +1,4 @@
-import { useRef, useState } from 'react';
-
-// material-ui
+import { useEffect, useRef, useState } from 'react';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import Avatar from '@mui/material/Avatar';
@@ -18,222 +16,289 @@ import Popper from '@mui/material/Popper';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
-
-// project import
 import MainCard from 'components/MainCard';
 import Transitions from 'components/@extended/Transitions';
-
-// assets
 import BellOutlined from '@ant-design/icons/BellOutlined';
 import CheckCircleOutlined from '@ant-design/icons/CheckCircleOutlined';
 import GiftOutlined from '@ant-design/icons/GiftOutlined';
 import MessageOutlined from '@ant-design/icons/MessageOutlined';
 import SettingOutlined from '@ant-design/icons/SettingOutlined';
+import { io } from 'socket.io-client';
 
-// sx styles
-const avatarSX = {
-  width: 36,
-  height: 36,
-  fontSize: '1rem'
+// Socket.IO connection
+const socket = io(import.meta.env.VITE_APP_IMAGE_PATH, {
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+});
+
+// Notification icons mapping
+const notificationIcons = {
+  patient: <GiftOutlined />,
+  message: <MessageOutlined />,
+  system: <SettingOutlined />,
+  appointment: <BellOutlined />,
+  default: <BellOutlined />
 };
-
-const actionSX = {
-  mt: '6px',
-  ml: 1,
-  top: 'auto',
-  right: 'auto',
-  alignSelf: 'flex-start',
-
-  transform: 'none'
-};
-
-// ==============================|| HEADER CONTENT - NOTIFICATION ||============================== //
 
 export default function Notification() {
   const theme = useTheme();
   const matchesXs = useMediaQuery(theme.breakpoints.down('md'));
-
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const anchorRef = useRef(null);
-  const [read, setRead] = useState(2);
   const [open, setOpen] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const userRole = localStorage.getItem('userRole')?.toLowerCase() || 'doctor';
+
+  // Handle notification panel toggle
   const handleToggle = () => {
+    if (!open && unreadCount > 0) {
+      markAllAsRead();
+    }
     setOpen((prevOpen) => !prevOpen);
   };
 
   const handleClose = (event) => {
-    if (anchorRef.current && anchorRef.current.contains(event.target)) {
-      return;
-    }
+    if (anchorRef.current?.contains(event.target)) return;
     setOpen(false);
   };
 
-  const iconBackColorOpen = 'grey.100';
+  // Mark notifications as read
+  const markAllAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setUnreadCount(0);
+  };
+
+  // Format time display
+  const formatTime = (dateString) => {
+    return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Format date display
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString();
+  };
+
+  // Handle notification click
+  const handleNotificationClick = (id) => {
+    setNotifications(prev =>
+      prev.map(n =>
+        n.id === id ? { ...n, read: true } : n
+      )
+    );
+    setUnreadCount(prev => Math.max(0, prev - 1)); // Ensures count never goes below 0
+  };
+
+  // Socket.IO connection management
+  useEffect(() => {
+    const handleConnect = () => {
+      setConnectionStatus('connected');
+      socket.emit('register-role', userRole);
+    };
+
+    const handleDisconnect = () => {
+      setConnectionStatus('disconnected');
+    };
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+
+    // Register role when connected
+    if (socket.connected) {
+      handleConnect();
+    }
+
+    return () => {
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+    };
+  }, [userRole]);
+
+  // Notification event listener
+  useEffect(() => {
+    if (!socket.connected) return;
+
+    const notificationHandler = (data) => {
+      const newNotification = {
+        id: data.id || Date.now(),
+        type: data.type || 'patient',
+        title: data.title,
+        message: data.message,
+        timestamp: data.timestamp || new Date().toISOString(),
+        read: false,
+        metadata: data.metadata || {}
+      };
+
+      setNotifications(prev => [newNotification, ...prev.slice(0, 49)]);
+      setUnreadCount(prev => prev + 1);
+    };
+
+    socket.on(`${userRole}_notification`, notificationHandler);
+    socket.on('global_notification', notificationHandler);
+
+    return () => {
+      socket.off(`${userRole}_notification`, notificationHandler);
+      socket.off('global_notification', notificationHandler);
+    };
+  }, [userRole]);
 
   return (
     <Box sx={{ flexShrink: 0, ml: 0.75 }}>
-      <IconButton
-        color="secondary"
-        variant="light"
-        sx={{ color: 'text.primary', bgcolor: open ? iconBackColorOpen : 'transparent' }}
-        aria-label="open profile"
-        ref={anchorRef}
-        aria-controls={open ? 'profile-grow' : undefined}
-        aria-haspopup="true"
-        onClick={handleToggle}
-      >
-        <Badge badgeContent={read} color="primary">
-          <BellOutlined />
-        </Badge>
-      </IconButton>
+      <Tooltip title={`Notifications (${connectionStatus})`}>
+        <IconButton
+          color="secondary"
+          sx={{
+            color: 'text.primary',
+            bgcolor: open ? 'grey.100' : 'transparent',
+            position: 'relative'
+          }}
+          ref={anchorRef}
+          onClick={handleToggle}
+        >
+          <Badge badgeContent={unreadCount} color="error" max={9}>
+            <BellOutlined />
+          </Badge>
+          {connectionStatus !== 'connected' && (
+            <Box sx={{
+              position: 'absolute',
+              bottom: 4,
+              right: 4,
+              width: 8,
+              height: 8,
+              bgcolor: connectionStatus === 'connected' ? 'success.main' : 'error.main',
+              borderRadius: '50%',
+              border: `1px solid ${theme.palette.background.paper}`
+            }} />
+          )}
+        </IconButton>
+      </Tooltip>
+
       <Popper
         placement={matchesXs ? 'bottom' : 'bottom-end'}
         open={open}
         anchorEl={anchorRef.current}
-        role={undefined}
         transition
         disablePortal
-        popperOptions={{ modifiers: [{ name: 'offset', options: { offset: [matchesXs ? -5 : 0, 9] } }] }}
+        sx={{ zIndex: theme.zIndex.tooltip }}
       >
         {({ TransitionProps }) => (
           <Transitions type="grow" position={matchesXs ? 'top' : 'top-right'} in={open} {...TransitionProps}>
-            <Paper sx={{ boxShadow: theme.customShadows.z1, width: '100%', minWidth: 285, maxWidth: { xs: 285, md: 420 } }}>
+            <Paper sx={{
+              boxShadow: theme.customShadows.z1,
+              width: '100%',
+              minWidth: 320,
+              maxWidth: { xs: 320, sm: 450 },
+              maxHeight: '70vh',
+              overflow: 'auto'
+            }}>
               <ClickAwayListener onClickAway={handleClose}>
                 <MainCard
-                  title="Notification"
+                  title={`Notifications (${notifications.length})`}
                   elevation={0}
                   border={false}
                   content={false}
                   secondary={
-                    <>
-                      {read > 0 && (
-                        <Tooltip title="Mark as all read">
-                          <IconButton color="success" size="small" onClick={() => setRead(0)}>
-                            <CheckCircleOutlined style={{ fontSize: '1.15rem' }} />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                    </>
+                    unreadCount > 0 && (
+                      <Tooltip title="Mark all as read">
+                        <IconButton
+                          color="success"
+                          size="small"
+                          onClick={markAllAsRead}
+                        >
+                          <CheckCircleOutlined style={{ fontSize: '1.15rem' }} />
+                        </IconButton>
+                      </Tooltip>
+                    )
                   }
                 >
-                  <List
-                    component="nav"
-                    sx={{
-                      p: 0,
-                      '& .MuiListItemButton-root': {
-                        py: 0.5,
-                        '&.Mui-selected': { bgcolor: 'grey.50', color: 'text.primary' },
-                        '& .MuiAvatar-root': avatarSX,
-                        '& .MuiListItemSecondaryAction-root': { ...actionSX, position: 'relative' }
-                      }
-                    }}
-                  >
-                    <ListItemButton selected={read > 0}>
-                      <ListItemAvatar>
-                        <Avatar sx={{ color: 'success.main', bgcolor: 'success.lighter' }}>
-                          <GiftOutlined />
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={
-                          <Typography variant="h6">
-                            It&apos;s{' '}
-                            <Typography component="span" variant="subtitle1">
-                              Cristina danny&apos;s
-                            </Typography>{' '}
-                            birthday today.
-                          </Typography>
-                        }
-                        secondary="2 min ago"
-                      />
-                      <ListItemSecondaryAction>
-                        <Typography variant="caption" noWrap>
-                          3:00 AM
+                  <List sx={{ p: 0 }}>
+                    {notifications.length > 0 ? (
+                      notifications.map((notification) => (
+                        <div key={notification.id}>
+                          <ListItemButton
+                            onClick={() => handleNotificationClick(notification.id)}
+                            selected={!notification.read}
+                            sx={{
+                              '&:hover': { bgcolor: 'action.hover' },
+                              '&.Mui-selected': { bgcolor: 'action.selected' }
+                            }}
+                          >
+                            <ListItemAvatar>
+                              <Avatar sx={{
+                                color: `${notification.type}.main`,
+                                bgcolor: `${notification.type}.lighter`
+                              }}>
+                                {notificationIcons[notification.type] || notificationIcons.default}
+                              </Avatar>
+                            </ListItemAvatar>
+                            <ListItemText
+                              primary={
+                                <Typography variant="subtitle1" noWrap>
+                                  {notification.title}
+                                </Typography>
+                              }
+                              secondary={
+                                <>
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{
+                                      display: '-webkit-box',
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: 'vertical',
+                                      overflow: 'hidden'
+                                    }}
+                                  >
+                                    {notification.message}
+                                  </Typography>
+                                  <Box sx={{display:'flex',justifyContent:'space-between'}}>
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                      sx={{ display: 'block', mt: 0.5 }}
+                                    >
+                                      {formatDate(notification.timestamp)}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      {formatTime(notification.timestamp)}
+                                    </Typography>
+                                  </Box>
+                                </>
+                              }
+                            />
+
+                          </ListItemButton>
+                          <Divider />
+                        </div>
+                      ))
+                    ) : (
+                      <Box sx={{ p: 3, textAlign: 'center' }}>
+                        <Typography variant="body1" color="text.secondary">
+                          No notifications yet
                         </Typography>
-                      </ListItemSecondaryAction>
-                    </ListItemButton>
-                    <Divider />
-                    <ListItemButton>
-                      <ListItemAvatar>
-                        <Avatar sx={{ color: 'primary.main', bgcolor: 'primary.lighter' }}>
-                          <MessageOutlined />
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={
-                          <Typography variant="h6">
-                            <Typography component="span" variant="subtitle1">
-                              Aida Burg
-                            </Typography>{' '}
-                            commented your post.
-                          </Typography>
-                        }
-                        secondary="5 August"
-                      />
-                      <ListItemSecondaryAction>
-                        <Typography variant="caption" noWrap>
-                          6:00 PM
+                      </Box>
+                    )}
+                    {notifications.length > 0 && (
+                      <ListItemButton
+                        sx={{
+                          justifyContent: 'center',
+                          bgcolor: 'primary.lighter',
+                          '&:hover': { bgcolor: 'primary.light' }
+                        }}
+                      >
+                        <Typography variant="subtitle2" color="primary">
+                          View All Notifications
                         </Typography>
-                      </ListItemSecondaryAction>
-                    </ListItemButton>
-                    <Divider />
-                    <ListItemButton selected={read > 0}>
-                      <ListItemAvatar>
-                        <Avatar sx={{ color: 'error.main', bgcolor: 'error.lighter' }}>
-                          <SettingOutlined />
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={
-                          <Typography variant="h6">
-                            Your Profile is Complete &nbsp;
-                            <Typography component="span" variant="subtitle1">
-                              60%
-                            </Typography>{' '}
-                          </Typography>
-                        }
-                        secondary="7 hours ago"
-                      />
-                      <ListItemSecondaryAction>
-                        <Typography variant="caption" noWrap>
-                          2:45 PM
-                        </Typography>
-                      </ListItemSecondaryAction>
-                    </ListItemButton>
-                    <Divider />
-                    <ListItemButton>
-                      <ListItemAvatar>
-                        <Avatar sx={{ color: 'primary.main', bgcolor: 'primary.lighter' }}>C</Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={
-                          <Typography variant="h6">
-                            <Typography component="span" variant="subtitle1">
-                              Cristina Danny
-                            </Typography>{' '}
-                            invited to join{' '}
-                            <Typography component="span" variant="subtitle1">
-                              Meeting.
-                            </Typography>
-                          </Typography>
-                        }
-                        secondary="Daily scrum meeting time"
-                      />
-                      <ListItemSecondaryAction>
-                        <Typography variant="caption" noWrap>
-                          9:10 PM
-                        </Typography>
-                      </ListItemSecondaryAction>
-                    </ListItemButton>
-                    <Divider />
-                    <ListItemButton sx={{ textAlign: 'center', py: `${12}px !important` }}>
-                      <ListItemText
-                        primary={
-                          <Typography variant="h6" color="primary">
-                            View All
-                          </Typography>
-                        }
-                      />
-                    </ListItemButton>
+                      </ListItemButton>
+                    )}
                   </List>
                 </MainCard>
               </ClickAwayListener>
