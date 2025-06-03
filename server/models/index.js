@@ -8,7 +8,10 @@ const ultarsound = require('.././models/UltarSound');
 const LabReport = require('.././models/LabReport');
 const Appointment =require('.././models/Appointment');
 const employee=require('.././models/Employee');
-
+const rolePermission=require('../models/RolePermission');
+const emergencyHealthInfo=require('../models/EmergencyHealthInfo');
+const clinicInfo=require('../models/ClinicInfo');
+const medicine=require('../models/Medicine')
 module.exports = {
   Admin,
   patient,
@@ -19,5 +22,9 @@ module.exports = {
   ultarsound,
   LabReport,
   Appointment,
-  employee
+  employee,
+  rolePermission,
+  emergencyHealthInfo,
+  clinicInfo,
+  medicine
 };

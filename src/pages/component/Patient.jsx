@@ -6,23 +6,18 @@ import * as Yup from 'yup';
 const Patient = () => {
   // Form configuration
   const patientFormFields = [
-    { name: 'firstName', label: 'First Name', type: 'text', required: true },
-    { name: 'middleName', label: 'Middle Name', type: 'text' },
-    { name: 'lastName', label: 'Last Name', type: 'text', required: true },
+    { name: 'first_name', label: 'First Name', type: 'text', required: true },
+    { name: 'middle_name', label: 'Middle Name', type: 'text' },
+    { name: 'last_name', label: 'Last Name', type: 'text', required: true },
     { name: 'gender', label: 'Gender', type: 'select', required: true, options: [
         { value: 'Male', label: 'Male' },
         { value: 'Female', label: 'Female' }
       ]
     },
+    {name: 'age',label: 'Age',type:'text'},
+    {name:'phone_number',label: 'Phone Number',type: 'text'},
     {
-      name: 'dateOfBirth',
-      label: 'Date of Birth',
-      type: 'date',
-      required: true
-    },
-    {name:'phoneNumber',label: 'Phone Number',type: 'text'},
-    {
-      name: 'bloodGroup',
+      name: 'blood_group',
       label: 'Blood Group',
       type: 'select',
       options: [
@@ -38,18 +33,18 @@ const Patient = () => {
         { value: 'O-', label: 'O-' }
       ]
     },
-    {name: 'bmiTest',label: 'BMI Test',type: 'select',options: [
-        {value: 'None', label: 'None' },
+    {name: 'bmi',label: 'BMI Test',type: 'select',options: [
+        {value: 'No', label: 'No' },
         { value: 'Weight', label: 'Weight' },
         { value: 'Height', label: 'Height' },
         { value: 'Both Height and Weight', label: 'Both Height and Weight' },
 
       ]},
-    {name:'bloodPressure',label: 'BloodPressure',type: 'select',options: [
+    {name:'bp',label: 'BloodPressure',type: 'select',options: [
         {value: 'No', label: 'No' },
         {value: 'Yes',label: 'Yes'}
       ] },
-    {name: 'selectDistrict',label: 'Select District',type: 'select',options: [
+    {name: 'district_state',label: 'Select District',type: 'select',options: [
         { value: 'Addis Ababa', label: 'Addis Ababa' },
         { value: 'Afar', label: 'Afar' },
         { value: 'Amhara', label: 'Amhara' },
@@ -62,41 +57,64 @@ const Patient = () => {
         { value: 'SNNPR', label: 'SNNPR' },
         { value: 'Tigray', label: 'Tigray' }
       ]},
-     {name: 'applicationFee',label: 'Application Fee',type: 'select',options: [
+    { name: 'kebele', label: 'Kebele', type: 'text' ,required: false},
+    { name: 'woreda', label: 'Woreda', type: 'text',required: false },
+    { name: 'sub_city', label: 'Sub City', type: 'text',required: false },
+    // { name: 'city', label: 'City', type: 'text',required: false },
+    { name: 'identification_number', label: 'Identification Number', type: 'text',required: false },
+
+     {name: 'application_fee',label: 'PatientCard Status',type: 'select',options: [
         {value: 'Active', label: 'Active'},
-        {value: 'Inactive', label: 'Inactive'},
+        {value: 'Expired', label: 'Expired'},
       ]},
+    {name: 'application_fee_amount',label: 'Application Fee',type:'text'},
+    {name: 'referencecode',label: 'ReferenceCode',type:'text'},
     {name: 'remark',label: 'Remark'}
   ];
 
   const patientValidationSchema = Yup.object({
-    firstName: Yup.string().required("First Name is required"),
-    middleName: Yup.string(),
-    lastName: Yup.string().required("Last Name is required"),
+    first_name: Yup.string().required("First Name is required"),
+    middle_name: Yup.string(),
+    last_name: Yup.string().required("Last Name is required"),
     gender: Yup.string().required("Gender is required"),
-    dateOfBirth: Yup.date().required("Date of Birth is required"),
-    bloodGroup: Yup.string(),
-    bmiTest: Yup.string(),
-    bloodPressure: Yup.string(),
-    selectDistrict: Yup.string(),
-    phoneNumber: Yup.string(),
-    applicationFee: Yup.string(),
-    Remark: Yup.string(),
+    date_of_birth: Yup.date().required("Date of Birth is required"),
+    blood_group: Yup.string(),
+    bmi: Yup.string(),
+    bp: Yup.string(),
+    district_state: Yup.string(),
+    phone_number: Yup.string(),
+    application_fee: Yup.string(),
+    application_fee_amount:Yup.number(),
+    referencecode:Yup.string(),
+    kebele: Yup.string().nullable(),
+    woreda: Yup.string().nullable(),
+    sub_city: Yup.string().nullable(),
+    identification_number: Yup.string().nullable(),
+    remark: Yup.string(),
   });
 
   const initialPatientValues = {
-    firstName: '',
-    middleName: '',
-    lastName: '',
+    first_name: '',
+    middle_name: '',
+    last_name: '',
     gender: '',
-    dateOfBirth: new Date(),
-    bloodGroup: '',
-    bm: '',
-    bp: '',
-    selectDistrict: '',
-    phoneNumber: '',
-    applicationFee: '',
-    Remark: '',
+    age:'0',
+    date_of_birth: new Date(),
+    blood_group: 'Unknown',
+    bm: 'No',
+    bmi:'No',
+    bp: 'No',
+    district_state: 'Addis Ababa',
+    phone_number: '',
+    application_fee: 'Active',
+    application_fee_amount:'0',
+    referencecode:'',
+    kebele:'',
+    woreda:'',
+    city:'',
+    sub_city:'',
+    identification_number:'',
+    remark: '',
   };
 
   // Column configuration
@@ -114,7 +132,7 @@ const Patient = () => {
     { field: 'country', headerName: 'Country', width: 150, flex: 1 },
     { field: 'district_state', headerName: 'District', width: 150, flex: 1 },
     { field: 'phone_number', headerName: 'PhoneNumber', width: 150, flex: 1 },
-    { field: 'createdAt', headerName: 'Admission Date', width: 180, flex: 2 },
+    { field: 'createdAt', headerName: 'Admission Date', width: 180, flex: 2, },
     {field: 'application_fee', headerName: 'Application Fee', width: 150, flex: 1 },
   ];
 
@@ -143,7 +161,7 @@ const Patient = () => {
       modelName="Patient"
       prefix="PA-"
       detailPagePath="/patient-details"
-
+      pathe={'patients'}
       columns={patientColumns}
       valueGetters={patientValueGetters}
       customRenderers={patientCustomRenderers}
@@ -152,7 +170,7 @@ const Patient = () => {
       validationSchema={patientValidationSchema}
       formFields={patientFormFields}
 
-      searchFields={['first_name', 'last_name', 'code']}
+      searchFields={['first_name', 'last_name', 'code','phone_number']}
     />
   );
 };

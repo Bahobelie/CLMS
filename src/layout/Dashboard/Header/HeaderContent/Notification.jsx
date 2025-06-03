@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-
-// material-ui imports (keep your existing imports)
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import Avatar from '@mui/material/Avatar';
@@ -18,178 +16,221 @@ import Popper from '@mui/material/Popper';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
-
-// project imports (keep your existing imports)
 import MainCard from 'components/MainCard';
 import Transitions from 'components/@extended/Transitions';
-
-// assets (keep your existing imports)
 import BellOutlined from '@ant-design/icons/BellOutlined';
 import CheckCircleOutlined from '@ant-design/icons/CheckCircleOutlined';
 import GiftOutlined from '@ant-design/icons/GiftOutlined';
 import MessageOutlined from '@ant-design/icons/MessageOutlined';
 import SettingOutlined from '@ant-design/icons/SettingOutlined';
-
 import { io } from 'socket.io-client';
 
-const socket = io('http://localhost:4000'); // Replace with your backend URL
+// Socket.IO connection
+const socket = io(import.meta.env.VITE_APP_IMAGE_PATH, {
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+});
 
-// sx styles (keep your existing styles)
-const avatarSX = {
-  width: 36,
-  height: 36,
-  fontSize: '1rem'
-};
-
-const actionSX = {
-  mt: '6px',
-  ml: 1,
-  top: 'auto',
-  right: 'auto',
-  alignSelf: 'flex-start',
-  transform: 'none'
-};
-
-// Notification type icons mapping
+// Notification icons mapping
 const notificationIcons = {
   patient: <GiftOutlined />,
   message: <MessageOutlined />,
   system: <SettingOutlined />,
+  appointment: <BellOutlined />,
   default: <BellOutlined />
 };
-
-// ==============================|| HEADER CONTENT - NOTIFICATION ||============================== //
 
 export default function Notification() {
   const theme = useTheme();
   const matchesXs = useMediaQuery(theme.breakpoints.down('md'));
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
-
   const anchorRef = useRef(null);
   const [open, setOpen] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const userRole = localStorage.getItem('userRole')?.toLowerCase() || 'doctor';
 
+  // Handle notification panel toggle
   const handleToggle = () => {
-    setOpen((prevOpen) => !prevOpen);
-    // Mark as read when opening
     if (!open && unreadCount > 0) {
-      setUnreadCount(0);
+      markAllAsRead();
     }
+    setOpen((prevOpen) => !prevOpen);
   };
 
   const handleClose = (event) => {
-    if (anchorRef.current && anchorRef.current.contains(event.target)) {
-      return;
-    }
+    if (anchorRef.current?.contains(event.target)) return;
     setOpen(false);
   };
 
-  const formatTime = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  // Mark notifications as read
+  const markAllAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setUnreadCount(0);
   };
 
+  // Format time display
+  const formatTime = (dateString) => {
+    return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Format date display
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
+    const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
 
-    if (date.toDateString() === now.toDateString()) {
-      return 'Today';
-    }
-
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    if (date.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
-    }
-
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
     return date.toLocaleDateString();
   };
 
-  // In your Notification component
+  // Handle notification click
+  const handleNotificationClick = (id) => {
+    setNotifications(prev =>
+      prev.map(n =>
+        n.id === id ? { ...n, read: true } : n
+      )
+    );
+    setUnreadCount(prev => Math.max(0, prev - 1)); // Ensures count never goes below 0
+  };
+
+  // Socket.IO connection management
   useEffect(() => {
-    socket.on('new_patient', (data) => {
-      // Show immediate popup/toast
-      alert(`New patient: ${data.name} (${data.code})`);
+    const handleConnect = () => {
+      setConnectionStatus('connected');
+      socket.emit('register-role', userRole);
+    };
 
-      // Or add to notifications list
-      setNotifications(prev => [{
-        id: Date.now(), // Temporary ID
-        ...data,
-        read: false
-      }, ...prev]);
-    });
+    const handleDisconnect = () => {
+      setConnectionStatus('disconnected');
+    };
 
-    return () => socket.off('new_patient');
-  }, []);
-  const iconBackColorOpen = 'grey.100';
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+
+    // Register role when connected
+    if (socket.connected) {
+      handleConnect();
+    }
+
+    return () => {
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+    };
+  }, [userRole]);
+
+  // Notification event listener
+  useEffect(() => {
+    if (!socket.connected) return;
+
+    const notificationHandler = (data) => {
+      const newNotification = {
+        id: data.id || Date.now(),
+        type: data.type || 'patient',
+        title: data.title,
+        message: data.message,
+        timestamp: data.timestamp || new Date().toISOString(),
+        read: false,
+        metadata: data.metadata || {}
+      };
+
+      setNotifications(prev => [newNotification, ...prev.slice(0, 49)]);
+      setUnreadCount(prev => prev + 1);
+    };
+
+    socket.on(`${userRole}_notification`, notificationHandler);
+    socket.on('global_notification', notificationHandler);
+
+    return () => {
+      socket.off(`${userRole}_notification`, notificationHandler);
+      socket.off('global_notification', notificationHandler);
+    };
+  }, [userRole]);
 
   return (
     <Box sx={{ flexShrink: 0, ml: 0.75 }}>
-      <IconButton
-        color="secondary"
-        variant="light"
-        sx={{ color: 'text.primary', bgcolor: open ? iconBackColorOpen : 'transparent' }}
-        aria-label="open profile"
-        ref={anchorRef}
-        aria-controls={open ? 'profile-grow' : undefined}
-        aria-haspopup="true"
-        onClick={handleToggle}
-      >
-        <Badge badgeContent={unreadCount} color="primary">
-          <BellOutlined />
-        </Badge>
-      </IconButton>
+      <Tooltip title={`Notifications (${connectionStatus})`}>
+        <IconButton
+          color="secondary"
+          sx={{
+            color: 'text.primary',
+            bgcolor: open ? 'grey.100' : 'transparent',
+            position: 'relative'
+          }}
+          ref={anchorRef}
+          onClick={handleToggle}
+        >
+          <Badge badgeContent={unreadCount} color="error" max={9}>
+            <BellOutlined />
+          </Badge>
+          {connectionStatus !== 'connected' && (
+            <Box sx={{
+              position: 'absolute',
+              bottom: 4,
+              right: 4,
+              width: 8,
+              height: 8,
+              bgcolor: connectionStatus === 'connected' ? 'success.main' : 'error.main',
+              borderRadius: '50%',
+              border: `1px solid ${theme.palette.background.paper}`
+            }} />
+          )}
+        </IconButton>
+      </Tooltip>
+
       <Popper
         placement={matchesXs ? 'bottom' : 'bottom-end'}
         open={open}
         anchorEl={anchorRef.current}
-        role={undefined}
         transition
         disablePortal
-        popperOptions={{ modifiers: [{ name: 'offset', options: { offset: [matchesXs ? -5 : 0, 9] } }] }}
+        sx={{ zIndex: theme.zIndex.tooltip }}
       >
         {({ TransitionProps }) => (
           <Transitions type="grow" position={matchesXs ? 'top' : 'top-right'} in={open} {...TransitionProps}>
-            <Paper sx={{ boxShadow: theme.customShadows.z1, width: '100%', minWidth: 285, maxWidth: { xs: 285, md: 420 } }}>
+            <Paper sx={{
+              boxShadow: theme.customShadows.z1,
+              width: '100%',
+              minWidth: 320,
+              maxWidth: { xs: 320, sm: 450 },
+              maxHeight: '70vh',
+              overflow: 'auto'
+            }}>
               <ClickAwayListener onClickAway={handleClose}>
                 <MainCard
-                  title="Notification"
+                  title={`Notifications (${notifications.length})`}
                   elevation={0}
                   border={false}
                   content={false}
                   secondary={
-                    <>
-                      {unreadCount > 0 && (
-                        <Tooltip title="Mark as all read">
-                          <IconButton
-                            color="success"
-                            size="small"
-                            onClick={() => setUnreadCount(0)}
-                          >
-                            <CheckCircleOutlined style={{ fontSize: '1.15rem' }} />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                    </>
+                    unreadCount > 0 && (
+                      <Tooltip title="Mark all as read">
+                        <IconButton
+                          color="success"
+                          size="small"
+                          onClick={markAllAsRead}
+                        >
+                          <CheckCircleOutlined style={{ fontSize: '1.15rem' }} />
+                        </IconButton>
+                      </Tooltip>
+                    )
                   }
                 >
-                  <List
-                    component="nav"
-                    sx={{
-                      p: 0,
-                      '& .MuiListItemButton-root': {
-                        py: 0.5,
-                        '&.Mui-selected': { bgcolor: 'grey.50', color: 'text.primary' },
-                        '& .MuiAvatar-root': avatarSX,
-                        '& .MuiListItemSecondaryAction-root': { ...actionSX, position: 'relative' }
-                      }
-                    }}
-                  >
+                  <List sx={{ p: 0 }}>
                     {notifications.length > 0 ? (
                       notifications.map((notification) => (
                         <div key={notification.id}>
-                          <ListItemButton selected={!notification.read}>
+                          <ListItemButton
+                            onClick={() => handleNotificationClick(notification.id)}
+                            selected={!notification.read}
+                            sx={{
+                              '&:hover': { bgcolor: 'action.hover' },
+                              '&.Mui-selected': { bgcolor: 'action.selected' }
+                            }}
+                          >
                             <ListItemAvatar>
                               <Avatar sx={{
                                 color: `${notification.type}.main`,
@@ -200,49 +241,64 @@ export default function Notification() {
                             </ListItemAvatar>
                             <ListItemText
                               primary={
-                                <Typography variant="h6">
+                                <Typography variant="subtitle1" noWrap>
                                   {notification.title}
                                 </Typography>
                               }
                               secondary={
                                 <>
-                                  <Typography component="span" variant="body2">
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{
+                                      display: '-webkit-box',
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: 'vertical',
+                                      overflow: 'hidden'
+                                    }}
+                                  >
                                     {notification.message}
                                   </Typography>
-                                  <br />
-                                  {formatDate(notification.timestamp)}
+                                  <Box sx={{display:'flex',justifyContent:'space-between'}}>
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                      sx={{ display: 'block', mt: 0.5 }}
+                                    >
+                                      {formatDate(notification.timestamp)}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      {formatTime(notification.timestamp)}
+                                    </Typography>
+                                  </Box>
                                 </>
                               }
                             />
-                            <ListItemSecondaryAction>
-                              <Typography variant="caption" noWrap>
-                                {formatTime(notification.timestamp)}
-                              </Typography>
-                            </ListItemSecondaryAction>
+
                           </ListItemButton>
                           <Divider />
                         </div>
                       ))
                     ) : (
-                      <ListItemButton>
-                        <ListItemText
-                          primary={
-                            <Typography variant="body1" align="center">
-                              No notifications
-                            </Typography>
-                          }
-                        />
+                      <Box sx={{ p: 3, textAlign: 'center' }}>
+                        <Typography variant="body1" color="text.secondary">
+                          No notifications yet
+                        </Typography>
+                      </Box>
+                    )}
+                    {notifications.length > 0 && (
+                      <ListItemButton
+                        sx={{
+                          justifyContent: 'center',
+                          bgcolor: 'primary.lighter',
+                          '&:hover': { bgcolor: 'primary.light' }
+                        }}
+                      >
+                        <Typography variant="subtitle2" color="primary">
+                          View All Notifications
+                        </Typography>
                       </ListItemButton>
                     )}
-                    <ListItemButton sx={{ textAlign: 'center', py: `${12}px !important` }}>
-                      <ListItemText
-                        primary={
-                          <Typography variant="h6" color="primary">
-                            View All
-                          </Typography>
-                        }
-                      />
-                    </ListItemButton>
                   </List>
                 </MainCard>
               </ClickAwayListener>

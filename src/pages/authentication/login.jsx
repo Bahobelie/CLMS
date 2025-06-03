@@ -1,17 +1,60 @@
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-
-// material-ui
-import Grid from '@mui/material/Grid';
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
-
-// project import
+import { Grid, Stack, Typography, Button } from '@mui/material';
 import AuthWrapper from './AuthWrapper';
 import AuthLogin from './auth-forms/AuthLogin';
+import ForgotPasswordModal from './ForgotPasswordModal';
+import axios from 'axios';
+import Swal from 'sweetalert2'; // Import SweetAlert
 
-// ================================|| LOGIN ||================================ //
+const Login = () => {
+  const apiUrl = import.meta.env.VITE_APP_API_URL;
 
-export default function Login() {
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+
+  const handleForgotPasswordOpen = () => {
+    setIsForgotPasswordOpen(true);
+  };
+
+  const handleForgotPasswordClose = () => {
+    setIsForgotPasswordOpen(false);
+  };
+
+  const handleForgotPasswordSubmit = async (username) => {
+    console.log('Submitting username for password reset:', username);
+    try {
+      const response = await axios.post(`${apiUrl}/admins/reset-password`, {
+        username: username,
+      });
+
+      if (response.status === 200) {
+        Swal.fire({
+          title: 'Success',
+          text: 'Password reset try to login.',
+          icon: 'success',
+          confirmButtonText: 'OK',
+        });
+      } else {
+        await Swal.fire({
+          title: 'Error',
+          text: 'Failed to send reset instructions. Please check your username.',
+          icon: 'error',
+          confirmButtonText: 'OK',
+        });
+      }
+    } catch (error) {
+      Swal.fire({
+        title: 'Error',
+        text: 'An unexpected error occurred. Please try again later.',
+        icon: 'error',
+        confirmButtonText: 'OK',
+      });
+      console.error('An error occurred:', error);
+    } finally {
+      setIsForgotPasswordOpen(false); // Close modal
+    }
+  };
+
   return (
     <AuthWrapper>
       <Grid container spacing={3}>
@@ -26,7 +69,21 @@ export default function Login() {
         <Grid item xs={12}>
           <AuthLogin />
         </Grid>
+        <Grid item xs={12} sx={{ mt: 1 }}>
+          <Button onClick={handleForgotPasswordOpen} color="primary" size="small">
+            Forgot password?
+          </Button>
+        </Grid>
       </Grid>
+
+      {/* Render the ForgotPasswordModal */}
+      <ForgotPasswordModal
+        open={isForgotPasswordOpen}
+        onClose={handleForgotPasswordClose}
+        onSubmit={handleForgotPasswordSubmit}
+      />
     </AuthWrapper>
   );
-}
+};
+
+export default Login;

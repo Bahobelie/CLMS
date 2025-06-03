@@ -1,5 +1,6 @@
 const { raw } = require('express');
 const { Op } = require('sequelize');
+const { io } = require('socket.io-client');
 
 class crudControllr {
   constructor(service) {
@@ -78,43 +79,66 @@ class crudControllr {
       res.status(500).json({ error: err.message });
     }
   }
-    findByCondition = async (req, res) => {
-      try {
-        const condition = req.query; // Assuming condition is passed in parameter
+  findByCondition = async (req, res) => {
+    try {
+      const condition = req.query;
+      const { Op } = require('sequelize');
 
+      // Helper function to process date ranges
+      const processDateFilter = (fieldName, queryValue) => {
+        if (!queryValue) return;
 
-        if (req.query.createdAt) {
-          // Validate date format (YYYY-MM-DD)
-          if (!/^\d{4}-\d{2}-\d{2}$/.test(req.query.createdAt)) {
-            return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD" });
-          }
-
-          const dateOnly = req.query.createdAt; // "2025-04-15"
-
-
-          // Convert to proper date range
-          condition.createdAt = {
-            [Op.between]: [
-              new Date(`${dateOnly}T00:00:00.000Z`), // Start of day (UTC)
-              new Date(`${dateOnly}T23:59:59.999Z`)  // End of day (UTC)
-            ]
+        // Handle comparison operators (>=, <=)
+        if (queryValue.startsWith('>=') || queryValue.startsWith('<=')) {
+          const operator = queryValue.startsWith('>=') ? Op.gte : Op.lte;
+          const dateStr = queryValue.substring(2);
+          condition[fieldName] = {
+            [operator]: new Date(dateStr)
           };
-        };
-
-
-        const items = await this.service.findByCondition(condition);
-
-        if (!items?.length) {
-          return res.status(200).json({
-            message: "No items found",
-            query: condition
-          });
+          return;
         }
 
-        res.status(200).json(items);
-      } catch (err) {
-        res.status(500).json({ error: err.message });
+        // Handle exact date (YYYY-MM-DD format)
+        if (/^\d{4}-\d{2}-\d{2}$/.test(queryValue)) {
+          condition[fieldName] = {
+            [Op.between]: [
+              new Date(`${queryValue}T00:00:00.000Z`),
+              new Date(`${queryValue}T23:59:59.999Z`)
+            ]
+          };
+          return;
+        }
+
+        // Handle full ISO date string
+        if (new Date(queryValue).toString() !== 'Invalid Date') {
+          condition[fieldName] = new Date(queryValue);
+          return;
+        }
+
+        throw new Error(`Invalid date format for ${fieldName}. Use YYYY-MM-DD or ISO format`);
+      };
+
+      // Process date filters
+      processDateFilter('createdAt', req.query.createdAt);
+      processDateFilter('start_time', req.query.start_time);
+      processDateFilter('end_time', req.query.end_time);
+
+      const items = await this.service.findByCondition(condition);
+
+      if (!items?.length) {
+        return res.status(200).json({
+          message: "No items found",
+          query: condition
+        });
       }
-    };
+
+      res.status(200).json(items);
+    } catch (err) {
+      res.status(400).json({
+        error: err.message,
+        details: "Invalid date format. Please use YYYY-MM-DD, ISO format, or operators (>=, <=)"
+      });
+    }
+  };
 }
 module.exports=crudControllr;

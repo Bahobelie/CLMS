@@ -39,6 +39,7 @@ import AppointmentCalendar from '../appointement/Appointemnet';
 import LabTestsTable from '../patient/PaymentReson';
 import LabTestsView from '../patient/LabTestsView';
 import PatientImages from '../patient/PatientImages';
+import PrescriptionForm from '../patient/PrescriptionForm';
 
 const PatientDetail = () => {
   const theme = useTheme();
@@ -49,8 +50,25 @@ const PatientDetail = () => {
   const [tabIndex, setTabIndex] = useState(0);
   const [editMode, setEditMode] = useState(false);
   const navigate = useNavigate();
+  const [allowedMenus, setAllowedMenus] = useState([]);
+  const [permissionsLoading, setPermissionsLoading] = useState(true);
 
-  let userRole = localStorage.getItem('userRole'); // Assuming the role is stored as 'userRole'
+  const userRole = localStorage.getItem('userRole')?.toLowerCase();
+
+  // Define all possible tabs
+  const allTabItems = [
+    { key: "medicalrecords", menu: "medical_records", icon: <MedicalServicesIcon />, label: "Medical Records" },
+    { key: "appointments", menu: "appointments", icon: <CalendarIcon />, label: "Appointments" },
+    { key: "invoice", menu: "payments", icon: <ReceiptIcon />, label: "Payment Reason" },
+    { key: "UltraSound image", menu: "images", icon: <ImageIcon />, label: "UltraSound Images" },
+    { key: "information", menu: "patient_info", icon: <PersonIcon />, label: "Information" },
+    { key: "prescriptions", menu: "prescriptions", icon: <PrescriptionIcon />, label: "Prescriptions" },
+    { key: "healthinfo", menu: "health_info", icon: <HealthIcon />, label: "Health Info" },
+    { key: "labtests", menu: "lab_tests", icon: <MedicalServicesIcon />, label: "Lab Tests" }
+  ];
+
+  // Get filtered tabs based on permissions
+  const filteredTabs = allTabItems.filter(tab => allowedMenus.includes(tab.menu));
 
   const fetchPatient = async () => {
     try {
@@ -70,9 +88,36 @@ const PatientDetail = () => {
     }
   };
 
+  const fetchPermissions = async () => {
+    try {
+      setPermissionsLoading(true);
+      const response = await axios.get(`${apiUrl}/permission/`);
+      const data = response.data;
+
+      const menus = data
+        .filter(item => item.role?.toLowerCase() === userRole)
+        .map(item => item.menu?.toLowerCase());
+
+      setAllowedMenus(menus);
+      // Reset tab index when permissions change
+      setTabIndex(0);
+    } catch (err) {
+      console.error("Error fetching permissions:", err);
+      await Swal.fire({
+        title: 'Permission Error',
+        text: 'Failed to load user permissions',
+        icon: 'error',
+        timer: 2000
+      });
+    } finally {
+      setPermissionsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchPatient();
-  }, [code, apiUrl]);
+    fetchPermissions();
+  }, [code, apiUrl, userRole]);
 
   const handleUpdate = async (values) => {
     try {
@@ -90,7 +135,7 @@ const PatientDetail = () => {
         district_state: values.selectDistrict || "Addis Ababa",
         phone_number: values.phoneNumber,
         country: "Ethiopia",
-        application_fee: values.applicationFee || 'Expired',
+        application_fee: values.application_fee || 'Active',
         remark: values.Remark
       };
 
@@ -120,14 +165,13 @@ const PatientDetail = () => {
 
   const handleTabChange = (_, newValue) => {
     setTabIndex(newValue);
-    setEditMode(false); // Exit edit mode when switching tabs
+    setEditMode(false);
   };
 
   const getStatusChip = () => {
     let color = 'default';
     let label = 'Unknown';
 
-    // Example logic - adjust based on your actual status indicators
     if (patient?.application_fee === 'Expired') {
       color = 'error';
       label = 'Inactive';
@@ -143,9 +187,31 @@ const PatientDetail = () => {
   };
 
   const getTabContent = () => {
-    if (!patient) return null;
+    if (!patient || permissionsLoading) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+          <CircularProgress />
+        </Box>
+      );
+    }
 
-    switch (tabIndex) {
+    // Get the current tab from filtered list
+    const currentTab = filteredTabs[tabIndex];
+
+    if (!currentTab) {
+      return (
+        <CardContent>
+          <Typography variant="h6" color="error">
+            No accessible tabs available
+          </Typography>
+        </CardContent>
+      );
+    }
+
+    // Find the original index to determine which content to show
+    const originalIndex = allTabItems.findIndex(tab => tab.key === currentTab.key);
+
+    switch (originalIndex) {
       case 0: // Medical Record
         return <MedicalRecords patient={patient} />;
       case 1: // Appointments
@@ -160,10 +226,10 @@ const PatientDetail = () => {
         return (
           <CardContent>
             <PatientImages
-            patient={patient}
-            apiUrl={apiUrl}
-            refreshPatient={fetchPatient}
-            />;
+              patient={patient}
+              apiUrl={apiUrl}
+              refreshPatient={fetchPatient}
+            />
           </CardContent>
         );
       case 4: // Patient Information
@@ -177,14 +243,16 @@ const PatientDetail = () => {
               phoneNumber: patient.phone_number,
               dateOfBirth: patient.date_of_birth,
               Remark: patient.remark,
-              gender: patient.gender
+              gender: patient.gender,
+              application_fee:patient.application_fee,
+              age:patient.age
             }}
             onSubmit={handleUpdate}
           >
             {({ values, setFieldValue, handleReset }) => (
               <Form>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                  <Typography variant="h4">
+                  <Typography variant="h4" sx={{color:theme.palette.primary[100]}}>
                     Edit Patient Information
                   </Typography>
                   <Box>
@@ -253,7 +321,7 @@ const PatientDetail = () => {
                     <LocalizationProvider dateAdapter={AdapterDateFns}>
                       <DateTimePicker
                         label="Date of Birth *"
-                        value={values.dateOfBirth}
+                        value={values.dateOfBirth?new Date(values.dateOfBirth):null}
                         onChange={(val) => setFieldValue('dateOfBirth', val)}
                         slotProps={{ textField: { fullWidth: true } }}
                       />
@@ -270,7 +338,28 @@ const PatientDetail = () => {
                       >
                         <MenuItem value="Male">Male</MenuItem>
                         <MenuItem value="Female">Female</MenuItem>
-                        <MenuItem value="Other">Other</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <Field
+                      as={TextField}
+                      fullWidth
+                      label="Age"
+                      name="age"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <FormControl fullWidth>
+                      <InputLabel>Application Fee *</InputLabel>
+                      <Select
+                        name="application_fee"
+                        value={values.application_fee}
+                        onChange={(e) => setFieldValue('application_fee', e.target.value)}
+                        label="ApplicationFee"
+                      >
+                        <MenuItem value="Active">Active</MenuItem>
+                        <MenuItem value="Expired">Expired</MenuItem>
                       </Select>
                     </FormControl>
                   </Grid>
@@ -342,6 +431,10 @@ const PatientDetail = () => {
                 <Typography variant="subtitle1" color="textSecondary">Gender</Typography>
                 <Typography variant="body1">{patient.gender}</Typography>
               </Grid>
+              <Grid item xs={12} sm={6} md={4}>
+                <Typography variant="subtitle1" color="textSecondary">Age</Typography>
+                <Typography variant="body1">{patient.age}</Typography>
+              </Grid>
               <Grid item xs={12}>
                 <Typography variant="subtitle1" color="textSecondary">Remarks</Typography>
                 <Typography variant="body1">{patient.remark || 'No remarks'}</Typography>
@@ -352,8 +445,7 @@ const PatientDetail = () => {
       case 5: // Prescription
         return (
           <CardContent>
-            <Typography variant="h5" gutterBottom>Prescriptions</Typography>
-            <Typography color="textSecondary">Prescription details will be displayed here.</Typography>
+            <PrescriptionForm patient={patient}/>
           </CardContent>
         );
       case 6: // Health Info
@@ -487,60 +579,52 @@ const PatientDetail = () => {
 
               <Divider sx={{ width: '100%', my: 3 }} />
 
-              {/* Vertical Tabs */}
-              <Tabs
-                orientation="vertical"
-                value={tabIndex}
-                onChange={handleTabChange}
-                indicatorColor="primary"
-                textColor="primary"
-                sx={{
-                  '& .MuiTabs-indicator': {
-                    left: 0,
-                    width: 4,
-                    borderRadius: 2
-                  }
-                }}
-              >
-                {[
-                  { label: 'Medical Records', icon: <MedicalServicesIcon /> },
-                  { label: 'Appointments', icon: <CalendarIcon /> },
-                  { label: 'Payment Reason', icon: <ReceiptIcon /> },
-                  { label: 'Images', icon: <ImageIcon /> },
-                  { label: 'Information', icon: <PersonIcon /> },
-                  { label: 'Prescriptions', icon: <PrescriptionIcon /> },
-                  { label: 'Health Info', icon: <HealthIcon /> },
-                  { label: 'Lab Tests', icon: <MedicalServicesIcon /> },
-
-                ].map((tab, index) => (
-                  <Tab
-                    key={index}
-                    label={
-                      <Box sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'flex-start',
-                        width: '100%',
-                        px: 2,
-                        py: 1
-                      }}>
-                        {tab.icon}
-                        <Typography sx={{ ml: 2 }}>{tab.label}</Typography>
-                      </Box>
+              {/* Vertical Tabs - Only show permitted tabs */}
+              {!permissionsLoading && (
+                <Tabs
+                  orientation="vertical"
+                  value={tabIndex}
+                  onChange={handleTabChange}
+                  indicatorColor="primary"
+                  textColor="primary"
+                  sx={{
+                    '& .MuiTabs-indicator': {
+                      left: 0,
+                      width: 4,
+                      borderRadius: 2
                     }
-                    sx={{
-                      alignItems: 'flex-start',
-                      textTransform: 'none',
-                      borderRadius: 1,
-                      my: 0.5,
-                      '&.Mui-selected': {
-                        backgroundColor: theme.palette.action.selected,
-                        color: theme.palette.primary.main
+                  }}
+                >
+                  {filteredTabs.map((tab, index) => (
+                    <Tab
+                      key={tab.key}
+                      label={
+                        <Box sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'flex-start',
+                          width: '100%',
+                          px: 2,
+                          py: 1
+                        }}>
+                          {tab.icon}
+                          <Typography sx={{ ml: 2 }}>{tab.label}</Typography>
+                        </Box>
                       }
-                    }}
-                  />
-                ))}
-              </Tabs>
+                      sx={{
+                        alignItems: 'flex-start',
+                        textTransform: 'none',
+                        borderRadius: 1,
+                        my: 0.5,
+                        '&.Mui-selected': {
+                          backgroundColor: theme.palette.action.selected,
+                          color: theme.palette.primary.main
+                        }
+                      }}
+                    />
+                  ))}
+                </Tabs>
+              )}
             </Paper>
           </motion.div>
         </Grid>

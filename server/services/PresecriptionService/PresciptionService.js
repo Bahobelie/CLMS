@@ -6,8 +6,8 @@ class PrescriptionService extends CrudService {
   }
   async create(data) {
 
-    const { patientId ,code} = data;
-    if (!patientId)
+    const { patientid ,code} = data;
+    if (!patientid)
       throw new Error("Patient ID is required");
 
     const existingLabTest = await this.model.findOne({

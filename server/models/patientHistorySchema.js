@@ -191,6 +191,11 @@ const PatientHistory = sequelize.define('PatientHistory', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+  assessment: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+
   // Patient ID - Reference to the Patient Table
   patientId: {
     type: DataTypes.INTEGER,

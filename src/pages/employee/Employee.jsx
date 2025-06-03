@@ -13,7 +13,7 @@ const Employee = ({params}) => {
     const employmentType =async ()=>{
       const response = await axios.get(`${apiUrl}/systemConstants/by-condition`, {
         params: {
-          type: 'Employee'
+          type: 'Role'
         }
       });
       setEmploymentType(response.data)
@@ -46,9 +46,9 @@ const Employee = ({params}) => {
       name: 'specialization',
       label: 'Specialization',
       type: 'text',
-      required: true,
+      required: false,
     },
-    { name: 'phonenumber', label: 'Phone Number', type: 'text' },
+    { name: 'phonenumber', label: 'Phone Number', type: 'text',required: false },
     { name: 'email', label: 'Email', type: 'text' },
     {
       name: 'gender',
@@ -56,14 +56,8 @@ const Employee = ({params}) => {
       type: 'select',
       options: [
         { value: 'Male', label: 'Male' },
-        { value: 'Female', label: 'Female' },
-        { value: 'Other', label: 'Other' },
+        { value: 'Female', label: 'Female' }
       ],
-    },
-    {
-      name: 'dateofbirth',
-      label: 'Date of Birth',
-      type: 'date',
     },
     {
       name: 'yearsofexperience',
@@ -85,7 +79,7 @@ const Employee = ({params}) => {
         { value: 'Saturday', label: 'Saturday' },
         { value: 'Sunday', label: 'Sunday' },
       ],
-      required: true, // Make optional if needed
+      required: false, // Make optional if needed
       multiple: true, // Important for multi-select
       variant: 'outlined',
       fullWidth: true,
@@ -102,14 +96,12 @@ const Employee = ({params}) => {
     phonenumber: Yup.string(),
     email: Yup.string().email("Invalid email format"),
     gender: Yup.string(),
-    dateofbirth: Yup.date(),
     yearsofexperience: Yup.number().min(0, "Experience cannot be negative"),
     status: Yup.string(),
     // For date range option
     availabilityFrom: Yup.date().nullable(),
     availabilitydays: Yup.array()
       .of(Yup.string())
-      .min(1, 'Select at least one day'),
   });
 
 
@@ -122,7 +114,6 @@ const Employee = ({params}) => {
     phonenumber: '',
     email: '',
     gender: '',
-    dateofbirth: new Date(),
     yearsofexperience: 0,
     status: 'Available',
     availabilityFrom: null,
@@ -170,12 +161,6 @@ const Employee = ({params}) => {
       field: 'gender',
       headerName: 'Gender',
       width: 100,
-      flex: 1
-    },
-    {
-      field: 'dateofbirth',
-      headerName: 'Date of Birth',
-      width: 150,
       flex: 1
     },
     {
@@ -244,6 +229,7 @@ const Employee = ({params}) => {
       detailPagePath={`/employee-details`}
       params={params} // Your reception type filter
       columns={employeeColumns}
+      datapassed={employmentTypes}
       initialFormValues={initialEmployeeValues}
       validationSchema={employeeValidationSchema}
       formFields={employeeFormFields}

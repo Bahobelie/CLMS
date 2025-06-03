@@ -28,18 +28,6 @@ export default function NavItem({ item, level }) {
   const user = useSelector((state) => state.auth.user);
 
 
-  const lowercaseRoles = item.roles.map(role => role.toLowerCase());
-  const lowercaseUserRole = userRole.toLowerCase();
-
-
-  if (!userRole && user) {
-    userRole = user.role;
-  }
-  // If the item roles exist, check if the user role is in the roles array
-  if (lowercaseRoles && !lowercaseRoles.includes(lowercaseUserRole)) {
-    return null; // Do not render this item if the user role is not allowed
-  }
-
   let itemTarget = '_self';
   if (item.target) {
     itemTarget = '_blank';

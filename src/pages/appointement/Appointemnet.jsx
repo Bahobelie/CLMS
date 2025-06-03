@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Grid, Typography, IconButton, Button, ButtonGroup, Paper,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem
+  Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem,
+  FormControl, InputLabel, Select, Tooltip, Zoom, Chip
 } from '@mui/material';
 import {
   ChevronLeft, ChevronRight,
@@ -10,7 +11,10 @@ import {
   AccessTime as DayIcon,
   Add as AddIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  FilterList as FilterListIcon,
+  Clear as ClearIcon,
+  Event as EventIcon
 } from '@mui/icons-material';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -18,66 +22,117 @@ import axios from 'axios';
 import { useTheme } from '@mui/material/styles';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import Swal from 'sweetalert2';
+import { format, isSameDay, isSameMonth, startOfWeek, addDays, addMonths, subMonths, getDay, isWithinInterval } from 'date-fns';
 
 const timeSlots = Array.from({ length: 24 }, (_, i) => {
-  const hour = i % 12 === 0 ? 12 : i % 12;
+  const hour = i % 12 || 12; // Convert 0 to 12 for 12-hour format
   const suffix = i < 12 ? 'am' : 'pm';
   return `${hour}:00 ${suffix}`;
-});
+}).filter((_, i) => i % 2 === 0); // Only show even hours if you want 12 slots
 
 const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
- const TypeDoctor = 83; //['Dr. Abebe', 'Dr. Alemu', 'Dr. Selam', 'Dr. Tigist'];
+
+
+const statusColors = {
+  pending: 'warning',
+  confirmed: 'success',
+  cancelled: 'error',
+  completed: 'info',
+  postponed: 'secondary'
+};
 
 const AppointmentCalendar = ({ patient }) => {
   const theme = useTheme();
   const apiUrl = import.meta.env.VITE_APP_API_URL;
 
+  // State management
   const [view, setView] = useState('day');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [appointments, setAppointments] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedTime, setSelectedTime] = useState('');
   const [appointmentCode, setAppointmentCode] = useState('');
   const [selectedAppointment, setSelectedAppointment] = useState(null);
-  const [doctors,setDoctors]=useState([]);
+  const [doctors, setDoctors] = useState([]);
+  const [showFilters,setShowFilters] = useState(false);
 
   const [newAppointment, setNewAppointment] = useState({
     start_time: '',
     end_time: '',
     status: 'pending',
-    time: '12:00 pm', // Default time
+    time: '12:00 pm',
     date: '',
     notes: '',
     patientId: patient?.id || '',
     code: '',
-    doctor:null
+    doctor: null
   });
 
-  // Fetch appointments from API
-  useEffect(() => {
-    const fetchAppointments = async () => {
-      try {
-        const params = patient?.id ? { patientId: patient.id } : {};
-        const response = await axios.get(`${apiUrl}/appointments`, { params });
-        const doctor=await axios.get(`${apiUrl}/employees/by-condition`, {
-          params:{
-            type:TypeDoctor
-          }
-        });
+  const [dateFilter, setDateFilter] = useState({
+    startDate: null,
+    // endDate: null,
+    isActive: false
+  });
 
-        setAppointments(response.data);
-        setDoctors(doctor.data);
-        console.log('doctors',doctor)
+  // Color theme variables
+  const primaryColor = theme.palette.primary[100];
+  const primaryLight = theme.palette.primary[50];
+  const primaryDark = theme.palette.primary[200];
+  const textOnPrimary = '#ffffff';
+  const hoverBg = theme.palette.primary[50];
+  const borderColor = theme.palette.divider;
 
-      } catch (error) {
-        console.error('Error fetching appointments:', error);
+  // Fetch appointments with applied filters
+  const fetchAppointments = useCallback(async () => {
+    try {
+      const params = patient?.id ? { patientId: patient.id } : {};
+
+      if (dateFilter.isActive && (dateFilter.startDate)) {
+        const formatDateForAPI = (date) => {
+          if (!date) return null;
+          return format(date, 'yyyy-MM-dd');
+        };
+
+        const startDate = formatDateForAPI(dateFilter.startDate);
+
+        if (startDate) {
+          params.start_time = `>=${startDate}T00:00:00`;
+        }
       }
-    };
 
-    // Get the next appointment code
-    const fetchAppointmentCode = async () => {
+      const response = await axios.get(`${apiUrl}/appointments/by-condition`, {
+        params
+      });
+
+      const TypeDoctor = await axios.get(`${apiUrl}/systemConstants/by-condition`, {
+        params:{
+          type:'Role',
+          name:'Doctor'
+        }
+      });
+
+      const doctorResponse = await axios.get(`${apiUrl}/employees/by-condition`, {
+        params: { type: TypeDoctor.data[0].id }
+      });
+
+      console.log('response',TypeDoctor.data[0].id);
+
+      setAppointments(response.data);
+      setDoctors(doctorResponse.data);
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+      await Swal.fire({
+        title: 'Error!',
+        text: 'Failed to fetch appointments',
+        icon: 'error',
+        confirmButtonText: 'OK'
+      });
+    }
+  }, [patient?.id, apiUrl, dateFilter.isActive, dateFilter.startDate]);
+  // Initial data fetching
+  useEffect(() => {
+    const fetchAppointmntCode=async ()=>{
       try {
         const response = await axios.get(`${apiUrl}/model/next-code`, {
           params: {
@@ -85,57 +140,52 @@ const AppointmentCalendar = ({ patient }) => {
             prefix: 'APPT-'
           }
         });
-        setAppointmentCode(response.data.code);
-      } catch (error) {
-        console.error('Error fetching appointment code:', error);
+        setAppointmentCode(response.data.code)
+      } catch (error)
+      {
+        console.log(error)
       }
-    };
-
+    }
+    fetchAppointmntCode()
     fetchAppointments();
-    fetchAppointmentCode();
-  }, [openDialog, openEditDialog, patient]);
+  }, [fetchAppointments, apiUrl]);
 
-  // Update patientId when patient prop changes
+  // Set default doctor if patient exists
   useEffect(() => {
-    if (patient?.id) {
+    if (patient?.id && doctors.length > 0) {
       setNewAppointment(prev => ({
         ...prev,
         patientId: patient.id,
         doctor: doctors[0]
       }));
     }
-  }, [patient,doctors]);
+  }, [patient, doctors]);
 
+  // Navigation handlers
   const handlePrev = () => {
-    const newDate = new Date(currentDate);
-    if (view === 'month') {
-      newDate.setMonth(currentDate.getMonth() - 1);
-    } else if (view === 'week') {
-      newDate.setDate(currentDate.getDate() - 7);
-    } else {
-      newDate.setDate(currentDate.getDate() - 1);
-    }
-    setCurrentDate(newDate);
+    setCurrentDate(prevDate => {
+      if (view === 'month') return subMonths(prevDate, 1);
+      if (view === 'week') return addDays(prevDate, -7);
+      return addDays(prevDate, -1);
+    });
   };
 
   const handleNext = () => {
-    const newDate = new Date(currentDate);
-    if (view === 'month') {
-      newDate.setMonth(currentDate.getMonth() + 1);
-    } else if (view === 'week') {
-      newDate.setDate(currentDate.getDate() + 7);
-    } else {
-      newDate.setDate(currentDate.getDate() + 1);
-    }
-    setCurrentDate(newDate);
+    setCurrentDate(prevDate => {
+      if (view === 'month') return addMonths(prevDate, 1);
+      if (view === 'week') return addDays(prevDate, 7);
+      return addDays(prevDate, 1);
+    });
   };
 
   const handleToday = () => {
-    setCurrentDate(new Date());
-    setSelectedDate(new Date());
+    const today = new Date();
+    setCurrentDate(today);
+    setSelectedDate(today);
     setSelectedTime('');
   };
 
+  // Appointment CRUD operations
   const handleCancel = () => {
     setOpenDialog(false);
     setOpenEditDialog(false);
@@ -151,12 +201,6 @@ const AppointmentCalendar = ({ patient }) => {
       doctor: doctors[0]
     });
   };
-
-  const formattedDate = currentDate.toLocaleString('default', {
-    month: 'long',
-    year: 'numeric',
-    ...(view === 'week' && { day: 'numeric' })
-  });
 
   const handleDateClick = (date) => {
     setSelectedDate(date);
@@ -175,11 +219,10 @@ const AppointmentCalendar = ({ patient }) => {
 
     const newDate = new Date(selectedDate);
     newDate.setHours(hours, 0, 0, 0);
-    setSelectedDate(newDate);
 
     setNewAppointment({
       ...newAppointment,
-      date: newDate.toISOString().split('T')[0],
+      date: format(newDate, 'yyyy-MM-dd'),
       time: time,
       start_time: newDate.toISOString(),
       end_time: new Date(newDate.getTime() + 30 * 60000).toISOString()
@@ -188,9 +231,8 @@ const AppointmentCalendar = ({ patient }) => {
   };
 
   const handleAppointmentClick = (appointment, e) => {
-    e.stopPropagation(); // Stop event propagation
+    e.stopPropagation();
     setSelectedAppointment(appointment);
-    // Set the current values in newAppointment state for editing
     setNewAppointment({
       ...newAppointment,
       status: appointment.status,
@@ -211,21 +253,26 @@ const AppointmentCalendar = ({ patient }) => {
         });
         return;
       }
+          const response = await axios.get(`${apiUrl}/model/next-code`, {
+            params: {
+              model: `Appointment`,
+              prefix: 'APPT-'
+            }
+          });
 
-      console.log('new',newAppointment);
+      setAppointmentCode(response.data.code)
 
       const appointment = {
-        code: appointmentCode,
+        code: response.data.code,
         patientId: patient.id,
         start_time: newAppointment.start_time,
         end_time: newAppointment.end_time,
         status: newAppointment.status,
         notes: newAppointment.notes || '',
-        doctorid: newAppointment.doctor.id
+        doctorid: newAppointment.doctor?.id
       };
 
       await axios.post(`${apiUrl}/appointments`, appointment);
-
       setOpenDialog(false);
       await Swal.fire({
         title: 'Success!',
@@ -233,11 +280,10 @@ const AppointmentCalendar = ({ patient }) => {
         icon: 'success',
         confirmButtonText: 'OK'
       });
-
+      await fetchAppointments();
       handleCancel();
     } catch (error) {
       setOpenDialog(false);
-
       console.error('Error creating appointment:', error);
       await Swal.fire({
         title: 'Error!',
@@ -256,7 +302,7 @@ const AppointmentCalendar = ({ patient }) => {
         ...selectedAppointment,
         status: newAppointment.status,
         notes: newAppointment.notes,
-        doctor: newAppointment.doctor
+        doctorid: newAppointment.doctor?.id
       };
 
       await axios.put(`${apiUrl}/appointments/${selectedAppointment.id}`, updatedAppointment);
@@ -268,7 +314,7 @@ const AppointmentCalendar = ({ patient }) => {
         icon: 'success',
         confirmButtonText: 'OK'
       });
-
+      await fetchAppointments();
       handleCancel();
     } catch (error) {
       console.error('Error updating appointment:', error);
@@ -296,27 +342,16 @@ const AppointmentCalendar = ({ patient }) => {
 
       if (!result.isConfirmed || !selectedAppointment) return;
 
-      // Close the modal immediately before async operations
-
-      // Perform the deletion
       await axios.delete(`${apiUrl}/appointments/${selectedAppointment.id}`);
-
-      // Refresh appointments
-      const response = await axios.get(`${apiUrl}/appointments`, {
-        params: patient?.id ? { patientId: patient.id } : {}
-      });
-      setAppointments(response.data);
-
-      // Show success message after everything is done
-      await Swal.fire(
+      Swal.fire(
         'Deleted!',
         'Appointment has been deleted.',
         'success'
       );
-
+      fetchAppointments();
     } catch (error) {
       console.error('Error deleting appointment:', error);
-      await Swal.fire({
+      Swal.fire({
         title: 'Error!',
         text: 'Failed to delete appointment',
         icon: 'error',
@@ -325,336 +360,520 @@ const AppointmentCalendar = ({ patient }) => {
     }
   };
 
-  // Helper function to format date as YYYY-MM-DD
-  const formatDate = (date) => {
-    return date.toISOString().split('T')[0];
+  // Date filtering functions
+  const handleApplyDateFilter = () => {
+    if (dateFilter.startDate) {
+      setDateFilter(prev => ({ ...prev, isActive: true }));
+      // Force a re-render by updating currentDate
+      setCurrentDate(new Date(dateFilter.startDate));
+    }
   };
 
-  // Get appointments for a specific date
-  const getAppointmentsForDate = (date) => {
-    const dateStr = formatDate(date);
-    return appointments.filter(appt => {
-      const apptDate = new Date(appt.start_time).toISOString().split('T')[0];
-      return apptDate === dateStr && (!patient || appt.patientId === patient.id);
-    });
+  const handleClearDateFilter = () => {
+    setDateFilter({ startDate: null,Active: false });
+    // Force a re-render by updating currentDate
+    setCurrentDate(new Date(currentDate));
   };
 
-  // Get appointments for a specific time slot
-  const getAppointmentsForTime = (date, time) => {
-    const dateStr = formatDate(date);
-    const [hourStr, , period] = time.split(' ');
-    let hour = parseInt(hourStr);
-    if (period === 'pm' && hour !== 12) hour += 12;
-    if (period === 'am' && hour === 12) hour = 0;
-
-    return appointments.filter(appt => {
-      const apptDate = new Date(appt.start_time);
-      const apptHour = apptDate.getHours();
-      const apptDateStr = formatDate(apptDate);
-
-      return (
-        apptDateStr === dateStr &&
-        apptHour === hour &&
-        (!patient || appt.patientId === patient.id)
-      );
-    });
-  };
-
-  // Format time from ISO string to 12-hour format
+  // Utility functions
   const formatTimeFromISO = (isoString) => {
     if (!isoString) return '';
     const date = new Date(isoString);
-    const hours = date.getHours();
-    const minutes = date.getMinutes();
-    const ampm = hours >= 12 ? 'pm' : 'am';
-    const hours12 = hours % 12 || 12;
-    return `${hours12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+    return format(date, 'h:mm a');
   };
 
-  // Render appointment card
-  const renderAppointmentCard = (appt) => (
-    <Paper
-      sx={{
-        p: 1,
-        bgcolor: 'primary.100',
-        '&:hover': {
-          bgcolor: 'primary.200',
-          cursor: 'pointer'
+  function getDayOfWeek(dateStr) {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { weekday: 'long' });
+  }
+
+// Updated filtering functions
+  const getAppointmentsForDate = (date) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const appointmentsArray = Array.isArray(appointments) ? appointments : []; // Ensure appointments is an array
+    return appointmentsArray.filter(appt => {
+      const apptDate = new Date(appt.start_time);
+      const apptDateStr = format(apptDate, 'yyyy-MM-dd');
+
+      // Check if appointment matches the date
+      const dateMatch = apptDateStr === dateStr;
+
+      // Check if appointment matches patient filter
+      const patientMatch = !patient || appt.patientId === patient.id;
+
+      // Check if appointment matches date range filter
+      let dateRangeMatch = true;
+      if (dateFilter.isActive) {
+        const startDate = dateFilter.startDate ? new Date(dateFilter.startDate) : null;
+        const endDate = dateFilter.endDate ? new Date(dateFilter.endDate) : null; // Add this line
+
+        if (startDate) {
+          startDate.setHours(0, 0, 0, 0);
+          dateRangeMatch = dateRangeMatch && apptDate >= startDate;
         }
-      }}
-      onClick={(e) => handleAppointmentClick(appt,e)}
+        if (endDate) { // Add this block
+          endDate.setHours(23, 59, 59, 999);
+          dateRangeMatch = dateRangeMatch && apptDate <= endDate;
+        }
+      }
+
+      return dateMatch && patientMatch && dateRangeMatch;
+    });
+  };
+
+
+  const getAppointmentsForTimeSlot = (date, startTime, endTime) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const appointmentsArray = Array.isArray(appointments) ? appointments : [];
+    return appointmentsArray.filter(appt => {
+      const apptDate = new Date(appt.start_time);
+      const apptDateStr = format(apptDate, 'yyyy-MM-dd');
+
+      // Check if appointment matches the date
+      const dateMatch = apptDateStr === dateStr;
+
+      // Check if appointment matches patient filter
+      const patientMatch = !patient || appt.patientId === patient.id;
+
+      // Check if appointment matches date range filter
+      let dateRangeMatch = true;
+      if (dateFilter.isActive) {
+        const startDate = dateFilter.startDate ? new Date(dateFilter.startDate) : null;
+
+        if (startDate) {
+          startDate.setHours(0, 0, 0, 0);
+          dateRangeMatch = dateRangeMatch && apptDate >= startDate;
+        }
+      }
+
+      return dateMatch && patientMatch && dateRangeMatch;
+    }).filter(appt => {
+      const apptStart = new Date(appt.start_time);
+      const apptEnd = new Date(appt.end_time);
+      const apptDateStr = format(apptStart, 'yyyy-MM-dd');
+
+      // Parse the time slot
+      const [startHour, startMinute] = startTime.split(':').map(Number);
+      const [endHour, endMinute] = endTime.split(':').map(Number);
+
+      const slotStart = new Date(date);
+      slotStart.setHours(startHour, startMinute, 0, 0);
+
+      const slotEnd = new Date(date);
+      slotEnd.setHours(endHour, endMinute, 0, 0);
+
+      // Check if appointment is on the same day
+      const sameDay = apptDateStr === dateStr;
+
+      // Check if appointment overlaps with time slot
+      const overlaps = (apptStart < slotEnd && apptEnd > slotStart);
+
+      // Check if appointment matches patient filter
+      const patientMatch = !patient || appt.patientId === patient.id;
+
+      // Check if appointment matches date range filter
+      let dateRangeMatch = true;
+      if (dateFilter.isActive) {
+        const startDate = dateFilter.startDate ? new Date(dateFilter.startDate) : null;
+
+        if (startDate) {
+          startDate.setHours(0, 0, 0, 0);
+          dateRangeMatch = dateRangeMatch && apptStart >= startDate;
+        }
+      }
+
+      return sameDay && overlaps && patientMatch && dateRangeMatch;
+    });
+
+  };
+  // View rendering functions
+  const renderAppointmentCard = (appt) => {
+    const doctor = doctors.find((doc) => doc.id === appt.doctorid);
+    return (
+    <Tooltip
+      title={
+        <Box>
+          <Typography variant="subtitle2">Dr. { doctor?.firstname} {doctor.lastname || 'N/A'}</Typography>
+          <Typography variant="caption" display="block">
+           Day: {getDayOfWeek(appt.start_time)}
+          </Typography>
+          <Typography variant="caption" display="block">
+           Time: {formatTimeFromISO(appt.start_time)} - {formatTimeFromISO(appt.end_time)}
+          </Typography>
+
+          {appt.notes && (
+            <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+              Notes: {appt.notes}
+            </Typography>
+          )}
+          <Chip
+            label={appt.status}
+            size="small"
+            color={statusColors[appt.status] || 'default'}
+            sx={{ mt: 1 }}
+          />
+        </Box>
+      }
+      TransitionComponent={Zoom}
+      placement="top"
+      key={appt.id}
     >
-      <Typography variant="body2">
+      <Paper
+        sx={{
+          p: 0.75,
+          mb: 0.5,
+          bgcolor: primaryColor,
+          color: textOnPrimary,
+          fontSize: '0.8rem',
+          cursor: 'pointer',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          '&:hover': {
+            bgcolor: primaryDark,
+          }
+        }}
+        onClick={(e) => handleAppointmentClick(appt, e)}
+      >
         {patient?.first_name || `Patient ${appt.patientId}`}
-      </Typography>
-      <Typography variant="caption">{formatTimeFromISO(appt.start_time)}</Typography>
-      {appt.doctor && (
-        <Typography variant="caption" display="block">{appt.doctor}</Typography>
-      )}
-      {appt.notes && (
-        <Typography variant="caption" display="block">{appt.notes}</Typography>
-      )}
+        {appt.doctor && (
+          <Typography variant="caption" sx={{ display: 'block' }}>
+            Dr. {appt.doctor.firstname} {appt.doctor.lastname}
+          </Typography>
+        )}
+      </Paper>
+    </Tooltip>
+  )};
+
+  const renderDayView = () => (
+    <Paper sx={{ mt: 2, border: `1px solid ${borderColor}` }}>
+      {timeSlots.map((slot, i) => {
+        const [hourStr, suffix] = slot.split(' ');
+        let hour = parseInt(hourStr);
+        if (suffix === 'pm' && hour !== 12) hour += 12;
+        if (suffix === 'am' && hour === 12) hour = 0;
+        const startTime = `${hour.toString().padStart(2, '0')}:00`;
+        const endTime = `${(hour + 1).toString().padStart(2, '0')}:00`;
+        const slotAppointments = getAppointmentsForTimeSlot(currentDate, startTime, endTime);
+
+        return (
+          <Box
+            key={i}
+            sx={{
+              height: 60,
+              borderBottom: `1px solid ${borderColor}`,
+              px: 2,
+              display: 'flex',
+              alignItems: 'flex-start',
+              '&:hover': {
+                backgroundColor: hoverBg,
+                cursor: 'pointer'
+              }
+            }}
+            onClick={() => handleTimeClick(slot)}
+          >
+            <Typography width={100} variant="subtitle2" color="text.secondary">{slot}</Typography>
+            <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              {slotAppointments.map(appt => renderAppointmentCard(appt))}
+            </Box>
+          </Box>
+        );
+      })}
     </Paper>
   );
 
-  // Render day view
-  const renderDayView = () => {
-    const dayAppointments = getAppointmentsForDate(currentDate);
+  const renderWeekView = () => {
+    const startOfCurrentWeek = startOfWeek(currentDate);
+    const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfCurrentWeek, i));
 
     return (
-      <Paper sx={{ mt: 2 }}>
+      <Paper sx={{ mt: 2, border: `1px solid ${borderColor}` }}>
+        <Grid container sx={{ borderBottom: `1px solid ${borderColor}` }}>
+          {weekDays.map((day, i) => (
+            <Grid item xs key={i} sx={{ p: 1, textAlign: 'center' }}>
+              <Typography variant="subtitle1" fontWeight="bold">{daysOfWeek[i]}</Typography>
+              <Typography variant="caption">{format(day, 'd')}</Typography>
+            </Grid>
+          ))}
+        </Grid>
         {timeSlots.map((slot, i) => {
-          const slotAppointments = getAppointmentsForTime(currentDate, slot);
+          const [hourStr, suffix] = slot.split(' ');
+          let hour = parseInt(hourStr);
+          if (suffix === 'pm' && hour !== 12) hour += 12;
+          if (suffix === 'am' && hour === 12) hour = 0;
+          const startTime = `${hour.toString().padStart(2, '0')}:00`;
+          const endTime = `${(hour + 1).toString().padStart(2, '0')}:00`;
+
           return (
-            <Box
-              key={i}
-              sx={{
-                height: 50,
-                borderBottom: '1px solid #ccc',
-                px: 2,
-                display: 'flex',
-                alignItems: 'center',
-                '&:hover': {
-                  backgroundColor: 'primary.50',
-                  cursor: 'pointer'
-                }
-              }}
-              onClick={() => handleTimeClick(slot)}
-            >
-              <Typography width={100} variant="body2">{slot}</Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {slotAppointments.map((appt, idx) => (
-                  <Box key={idx}>
-                    {renderAppointmentCard(appt)}
-                  </Box>
-                ))}
-              </Box>
-            </Box>
+            <Grid container key={i} sx={{ borderBottom: `1px solid ${borderColor}`, minHeight: 60 }}>
+              {weekDays.map((day, j) => {
+                const dayAppointments = getAppointmentsForTimeSlot(day, startTime, endTime);
+                return (
+                  <Grid
+                    item
+                    xs
+                    key={j}
+                    sx={{
+                      p: 0.5,
+                      borderRight: `1px solid ${borderColor}`,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 0.5,
+                      '&:hover': {
+                        backgroundColor: hoverBg,
+                        cursor: 'pointer'
+                      }
+                    }}
+                    onClick={() => handleTimeClick(slot)}
+                  >
+                    {dayAppointments.map(appt => renderAppointmentCard(appt))}
+                  </Grid>
+                );
+              })}
+            </Grid>
           );
         })}
       </Paper>
     );
   };
 
-  // Render week view
-  const renderWeekView = () => {
-    const startOfWeek = new Date(currentDate);
-    startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
-    const weekDays = Array.from({ length: 7 }, (_, i) => {
-      const date = new Date(startOfWeek);
-      date.setDate(startOfWeek.getDate() + i);
-      return date;
-    });
-
-    return (
-      <Paper sx={{ mt: 2 }}>
-        <Grid container sx={{ borderBottom: '1px solid #ccc', p: 1 }}>
-          {weekDays.map((day, i) => (
-            <Grid item xs key={i}>
-              <Typography align="center" fontWeight="bold">
-                {daysOfWeek[i]} {day.getDate()}
-              </Typography>
-            </Grid>
-          ))}
-        </Grid>
-        {timeSlots.slice(0, 12).map((slot, i) => (
-          <Grid container key={i} sx={{ borderBottom: '1px solid #eee', height: 50 }}>
-            {weekDays.map((day, j) => {
-              const dayAppointments = getAppointmentsForTime(day, slot);
-              return (
-                <Grid
-                  item
-                  xs
-                  key={j}
-                  sx={{
-                    borderRight: '1px solid #f0f0f0',
-                    '&:hover': {
-                      backgroundColor: 'primary.50',
-                      cursor: 'pointer'
-                    }
-                  }}
-                  onClick={() => {
-                    setSelectedDate(day);
-                    handleTimeClick(slot);
-                  }}
-                >
-                  {dayAppointments.map((appt, k) => (
-                    <Box key={k}>
-                      {renderAppointmentCard(appt)}
-                    </Box>
-                  ))}
-                </Grid>
-              );
-            })}
-          </Grid>
-        ))}
-      </Paper>
-    );
-  };
-
-  // Render month view
   const renderMonthView = () => {
-    const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-    const days = [];
-    for (let i = 1; i <= end.getDate(); i++) {
-      days.push(new Date(currentDate.getFullYear(), currentDate.getMonth(), i));
-    }
-    const blankStart = start.getDay();
+    const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+    const startDay = startOfWeek(firstDayOfMonth);
+    const endDate = addDays(lastDayOfMonth, 6 - getDay(lastDayOfMonth));
+    const totalDays = (endDate.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24) + 1;
+    const calendarDays = Array.from({ length: totalDays }, (_, i) => addDays(startDay, i));
 
     return (
-      <Paper sx={{ mt: 2 }}>
-        <Grid container sx={{ borderBottom: '1px solid #ccc', p: 1 }}>
-          {daysOfWeek.map(day => (
-            <Grid item xs key={day}>
-              <Typography align="center" fontWeight="bold">{day}</Typography>
-            </Grid>
-          ))}
-        </Grid>
-        <Grid container flexWrap="wrap">
-          {[...Array(blankStart)].map((_, i) => (
-            <Grid item xs key={`blank-${i}`} sx={{ height: 80 }} />
-          ))}
-          {days.map((date, i) => {
-            const dateAppointments = getAppointmentsForDate(date);
-            return (
-              <Grid
-                item
-                xs
-                key={i}
+      <Grid container spacing={1} mt={2}>
+        {calendarDays.map((day) => {
+          const isCurrentMonth = isSameMonth(day, currentDate);
+          const dayAppointments = getAppointmentsForDate(day);
+
+          return (
+            <Grid item xs={12 / 7} key={day} sx={{
+              height: 100,
+              border: `1px solid ${borderColor}`,
+              overflow: 'hidden',
+              backgroundColor: isCurrentMonth ? 'background.paper' : 'action.hover'
+            }}>
+              <Box
                 sx={{
-                  border: '1px solid #eee',
-                  height: 80,
-                  p: 1,
-                  '&:hover': {
-                    backgroundColor: 'primary.50',
-                    cursor: 'pointer'
-                  }
+                  p: 0.5,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  backgroundColor: isSameDay(day, new Date()) ? primaryColor : 'transparent',
+                  color: isSameDay(day, new Date()) ? textOnPrimary : 'inherit',
+                  fontWeight: isSameDay(day, new Date()) ? 'bold' : 'normal',
+                  cursor: 'pointer'
                 }}
-                onClick={() => handleDateClick(date)}
+                onClick={() => handleDateClick(day)}
               >
-                <Typography variant="body2">{date.getDate()}</Typography>
-                <Box sx={{ overflow: 'hidden', maxHeight: 60 }}>
-                  {dateAppointments.slice(0, 2).map((appt, j) => (
-                    <Box key={j}>
-                      {renderAppointmentCard(appt)}
-                    </Box>
-                  ))}
-                  {dateAppointments.length > 2 && (
-                    <Typography variant="caption">+{dateAppointments.length - 2} more</Typography>
-                  )}
-                </Box>
-              </Grid>
-            );
-          })}
-        </Grid>
-      </Paper>
+                <Typography variant="caption" color={!isCurrentMonth ? 'text.disabled' : 'inherit'}>
+                  {format(day, 'd')}
+                </Typography>
+                {dayAppointments.length > 0 && (
+                  <EventIcon sx={{ fontSize: 'small', color: primaryColor }} />
+                )}
+              </Box>
+              <Box sx={{ p: 0.5, overflowY: 'auto', maxHeight: 80 }}>
+                {dayAppointments.slice(0, 2).map(appt => renderAppointmentCard(appt))}
+                {dayAppointments.length > 2 && (
+                  <Typography variant="caption" color="text.secondary">
+                    +{dayAppointments.length - 2} more
+                  </Typography>
+                )}
+              </Box>
+            </Grid>
+          );
+        })}
+      </Grid>
     );
   };
+
+  const renderFilterControls = () => (
+    <Paper sx={{
+      p: 2,
+      mb: 2,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 2,
+      backgroundColor: primaryLight,
+      flexWrap: 'wrap'
+    }}>
+      <DatePicker
+        label="From Date"
+        value={dateFilter.startDate}
+        onChange={(newValue) => setDateFilter(prev => ({ ...prev, startDate: newValue }))}
+        renderInput={(params) => <TextField {...params} size="small" sx={{ minWidth: 180 }} />}
+      />
+      <Button
+        onClick={handleApplyDateFilter}
+        variant="contained"
+        size="small"
+        disabled={!dateFilter.startDate}
+        sx={{
+          backgroundColor: primaryColor,
+          '&:hover': { backgroundColor: primaryDark },
+          minWidth: 120
+        }}
+      >
+        Apply Filter
+      </Button>
+      {dateFilter.isActive && (
+        <Button
+          onClick={handleClearDateFilter}
+          variant="outlined"
+          size="small"
+          startIcon={<ClearIcon />}
+          color="error"
+          sx={{ minWidth: 120 }}
+        >
+          Clear Filter
+        </Button>
+      )}
+      {dateFilter.isActive && (dateFilter.startDate ) && (
+        <Chip
+          label={
+            dateFilter.startDate
+              ? `${format(dateFilter.startDate, 'MMM d')}`
+              :null
+          }
+          color="primary"
+          size="small"
+          sx={{ ml: 1 }}
+        />
+      )}
+    </Paper>
+  );
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Box p={3}>
-        {/* Header */}
-        <Grid container alignItems="center" justifyContent="space-between" spacing={2}>
+        {/* Header with navigation controls */}
+        <Grid container alignItems="center" justifyContent="space-between" spacing={2} mb={2}>
           <Grid item>
-            <Typography variant="h4" sx={{ color: theme.palette.primary[100] }} fontWeight="bold">
+            <Typography variant="h4" sx={{ color: primaryColor }} fontWeight="bold">
               Appointments {patient ? `for ${patient.first_name || patient.name}` : ''}
             </Typography>
           </Grid>
+
           <Grid item>
-            <Button
-              sx={{
-                borderColor: theme.palette.primary[100],
-                color: theme.palette.primary[100],
-              }}
-              onClick={handleToday}
-              variant="outlined"
-            >
-              Today
-            </Button>
-          </Grid>
-          <Grid item>
-            <Grid container alignItems="center" spacing={1}>
-              <IconButton onClick={handlePrev}><ChevronLeft /></IconButton>
-              <Typography variant="h6" fontWeight="bold">{formattedDate}</Typography>
-              <IconButton onClick={handleNext}><ChevronRight /></IconButton>
-            </Grid>
-          </Grid>
-          <Grid item>
-            <ButtonGroup variant="outlined">
-              <Button
-                onClick={() => setView('month')}
-                variant={view === 'month' ? 'contained' : 'outlined'}
-                sx={{
-                  backgroundColor: view === 'month' ? theme.palette.primary[100] : 'transparent',
-                  borderColor: theme.palette.primary[100],
-                  color: view === 'month' ? theme.palette.primary.contrastText : theme.palette.primary[100],
-                  '&:hover': {
-                    borderColor: view === 'month' ? theme.palette.primary.dark : theme.palette.primary[100],
-                    color: view === 'month' ? theme.palette.primary.contrastText : theme.palette.primary[100],
-                  },
-                }}
-              >
-                <MonthIcon />
+            <ButtonGroup size="small" aria-label="navigation">
+              <Button onClick={handlePrev} sx={{ color: primaryColor }}>
+                <ChevronLeft />
               </Button>
+              <Button disabled sx={{ color: 'text.primary' }}>
+                {view === 'month' ? format(currentDate, 'MMMM yyyy') :
+                  view === 'week' ? `${format(startOfWeek(currentDate), 'MMM d')} - ${format(addDays(startOfWeek(currentDate), 6), 'MMM d')}` :
+                    format(currentDate, 'MMM d, yyyy')}
+              </Button>
+              <Button onClick={handleNext} sx={{ color: primaryColor }}>
+                <ChevronRight />
+              </Button>
+              {/*<Button*/}
+              {/*  onClick={handleToday}*/}
+              {/*  sx={{ color: primaryColor }}*/}
+              {/*>*/}
+              {/*  Today*/}
+              {/*</Button>*/}
+            </ButtonGroup>
+          </Grid>
+
+          <Grid item>
+            <ButtonGroup variant="outlined" size="small">
               <Button
                 onClick={() => setView('week')}
                 variant={view === 'week' ? 'contained' : 'outlined'}
                 sx={{
-                  borderColor: theme.palette.primary[100],
-                  backgroundColor: view === 'week' ? theme.palette.primary[100] : 'transparent',
-                  color: view === 'week' ? theme.palette.primary.contrastText : theme.palette.primary[100],
+                  backgroundColor: view === 'week' ? primaryColor : 'transparent',
+                  color: view === 'week' ? textOnPrimary : primaryColor,
                   '&:hover': {
-                    borderColor: view === 'week' ? theme.palette.primary.dark : theme.palette.secondary.dark,
-                    color: view === 'week' ? theme.palette.primary[100] : theme.palette.primary[100],
-                  },
+                    backgroundColor: view === 'week' ? primaryDark : primaryLight
+                  }
                 }}
               >
-                <WeekIcon />
+                <WeekIcon sx={{ mr: 0.5, fontSize: 'inherit' }} /> Week
               </Button>
               <Button
                 onClick={() => setView('day')}
                 variant={view === 'day' ? 'contained' : 'outlined'}
                 sx={{
-                  borderColor: theme.palette.primary[100],
-                  backgroundColor: view === 'day' ? theme.palette.primary[100] : 'transparent',
-                  color: view === 'day' ? theme.palette.primary.contrastText : theme.palette.primary[100],
+                  backgroundColor: view === 'day' ? primaryColor : 'transparent',
+                  color: view === 'day' ? textOnPrimary : primaryColor,
                   '&:hover': {
-                    borderColor: view === 'day' ? theme.palette.primary.dark : theme.palette.secondary.dark,
-                    color: view === 'day' ? theme.palette.primary.contrastText : theme.palette.primary[100],
-                  },
+                    backgroundColor: view === 'day' ? primaryDark : primaryLight
+                  }
                 }}
               >
-                <DayIcon />
+                <DayIcon sx={{ mr: 0.5, fontSize: 'inherit' }} /> Day
+              </Button>
+              <Button
+                onClick={() => setView('month')}
+                variant={view === 'month' ? 'contained' : 'outlined'}
+                sx={{
+                  backgroundColor: view === 'month' ? primaryColor : 'transparent',
+                  color: view === 'month' ? textOnPrimary : primaryColor,
+                  '&:hover': {
+                    backgroundColor: view === 'month' ? primaryDark : primaryLight
+                  }
+                }}
+              >
+                <MonthIcon sx={{ mr: 0.5, fontSize: 'inherit' }} /> Month
               </Button>
             </ButtonGroup>
           </Grid>
+
           <Grid item>
             <Button
               variant="contained"
               startIcon={<AddCircleOutlineIcon />}
               onClick={() => setOpenDialog(true)}
+              size="small"
               sx={{
-                backgroundColor: theme.palette.primary[100],
+                backgroundColor: primaryColor,
+                color: textOnPrimary,
                 '&:hover': {
-                  backgroundColor: theme.palette.primary[100]
+                  backgroundColor: primaryDark
                 }
               }}
             >
-              New Appointment
+              New
             </Button>
           </Grid>
+
+          <Grid item>
+            <Tooltip title="Filter appointments">
+              <IconButton
+                onClick={() => setShowFilters(!showFilters)}  // Toggle visibility
+                size="small"
+                sx={{ color: dateFilter.isActive ? 'secondary.main' : primaryColor }}
+              >
+                <FilterListIcon />
+              </IconButton>
+            </Tooltip>
+          </Grid>
+
+          {showFilters && renderFilterControls()}
         </Grid>
 
-        {/* View Content */}
+
+
+        {/* Calendar view */}
         {view === 'day' && renderDayView()}
         {view === 'week' && renderWeekView()}
         {view === 'month' && renderMonthView()}
 
         {/* Add Appointment Dialog */}
         <Dialog open={openDialog} onClose={handleCancel} fullWidth maxWidth="sm">
-          <DialogTitle sx={{ textAlign: 'center', color: theme.palette.primary[100], fontSize: '24px' }}>
+          <DialogTitle sx={{
+            textAlign: 'center',
+            color: primaryColor,
+            fontSize: '1.5rem',
+            backgroundColor: primaryLight,
+            py: 2
+          }}>
             Add New Appointment
           </DialogTitle>
           <DialogContent>
@@ -664,6 +883,7 @@ const AppointmentCalendar = ({ patient }) => {
                 value={appointmentCode}
                 disabled
                 fullWidth
+                size="small"
               />
 
               {patient && (
@@ -672,6 +892,7 @@ const AppointmentCalendar = ({ patient }) => {
                   value={patient.first_name || patient.name || `Patient ${patient.id}`}
                   disabled
                   fullWidth
+                  size="small"
                 />
               )}
 
@@ -682,10 +903,10 @@ const AppointmentCalendar = ({ patient }) => {
                   setSelectedDate(newValue);
                   setNewAppointment(prev => ({
                     ...prev,
-                    date: newValue.toISOString().split('T')[0]
+                    date: format(newValue, 'yyyy-MM-dd')
                   }));
                 }}
-                renderInput={(params) => <TextField {...params} fullWidth />}
+                renderInput={(params) => <TextField {...params} fullWidth size="small" />}
               />
 
               <TextField
@@ -698,10 +919,8 @@ const AppointmentCalendar = ({ patient }) => {
                   let hours = parseInt(hour);
                   if (suffix === 'pm' && hours !== 12) hours += 12;
                   if (suffix === 'am' && hours === 12) hours = 0;
-
                   const newDate = new Date(selectedDate);
                   newDate.setHours(hours, 0, 0, 0);
-
                   setNewAppointment(prev => ({
                     ...prev,
                     time: time,
@@ -709,50 +928,60 @@ const AppointmentCalendar = ({ patient }) => {
                     end_time: new Date(newDate.getTime() + 30 * 60000).toISOString()
                   }));
                 }}
-                SelectProps={{ native: true }}
                 fullWidth
+                size="small"
               >
                 {timeSlots.map((slot, index) => (
-                  <option key={index} value={slot}>
-                    {slot}
-                  </option>
+                  <MenuItem key={index} value={slot}>{slot}</MenuItem>
                 ))}
               </TextField>
 
-              <TextField
-                select
-                label="Doctor"
-                value={newAppointment.doctor}
-                onChange={(e) => setNewAppointment(prev => ({
-                  ...prev,
-                  doctor: e.target.value
-                }))}
-                SelectProps={{ native: true }}
-                fullWidth
-              >
-                {doctors.map((doctor, index) => (
-                  <option key={index} value={doctor.id}>
-                    Dr. {doctor.firstname}
-                  </option>
-                ))}
-              </TextField>
+              <FormControl fullWidth size="small">
+                <InputLabel id="doctor-select-label">Doctor</InputLabel>
+                <Select
+                  labelId="doctor-select-label"
+                  id="doctor-select"
+                  value={newAppointment.doctor?.id || ''}
+                  label="Doctor"
+                  onChange={(e) => {
+                    const selectedDoctor = doctors.find(d => d.id === e.target.value);
+                    setNewAppointment(prev => ({
+                      ...prev,
+                      doctor: selectedDoctor
+                    }));
+                  }}
+                >
+                  {Array.isArray(doctors) ? (
+                    doctors.map((doctor) => (
+                      <MenuItem key={doctor.id} value={doctor.id}>
+                        Dr. {doctor.firstname} {doctor.lastname}
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem value="">No doctors available</MenuItem>
+                  )}
+                </Select>
+              </FormControl>
 
-              <TextField
-                select
-                label="Status"
-                value={newAppointment.status}
-                onChange={(e) => setNewAppointment(prev => ({
-                  ...prev,
-                  status: e.target.value
-                }))}
-                SelectProps={{ native: true }}
-                fullWidth
-              >
-                <option value="pending">Pending</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="completed">Completed</option>
-              </TextField>
+              <FormControl fullWidth size="small">
+                <InputLabel id="status-select-label">Status</InputLabel>
+                <Select
+                  labelId="status-select-label"
+                  id="status-select"
+                  value={newAppointment.status}
+                  label="Status"
+                  onChange={(e) => setNewAppointment(prev => ({
+                    ...prev,
+                    status: e.target.value
+                  }))}
+                >
+                  <MenuItem value="pending">Pending</MenuItem>
+                  <MenuItem value="confirmed">Confirmed</MenuItem>
+                  <MenuItem value="cancelled">Cancelled</MenuItem>
+                  <MenuItem value="completed">Completed</MenuItem>
+                  <MenuItem value="postponed">Postponed</MenuItem>
+                </Select>
+              </FormControl>
 
               <TextField
                 label="Notes"
@@ -764,15 +993,30 @@ const AppointmentCalendar = ({ patient }) => {
                   notes: e.target.value
                 }))}
                 fullWidth
+                size="small"
               />
             </Box>
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleCancel}>Cancel</Button>
+            <Button
+              onClick={handleCancel}
+              size="small"
+              sx={{ color: primaryColor }}
+            >
+              Cancel
+            </Button>
             <Button
               onClick={handleAddAppointment}
               variant="contained"
               disabled={!newAppointment.start_time || !patient?.id}
+              size="small"
+              sx={{
+                backgroundColor: primaryColor,
+                color: textOnPrimary,
+                '&:hover': {
+                  backgroundColor: primaryDark
+                }
+              }}
             >
               Save
             </Button>
@@ -781,7 +1025,13 @@ const AppointmentCalendar = ({ patient }) => {
 
         {/* Edit Appointment Dialog */}
         <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} fullWidth maxWidth="sm">
-          <DialogTitle sx={{ textAlign: 'center', color: theme.palette.primary[100], fontSize: '24px' }}>
+          <DialogTitle sx={{
+            textAlign: 'center',
+            color: primaryColor,
+            fontSize: '1.5rem',
+            backgroundColor: primaryLight,
+            py: 2
+          }}>
             Edit Appointment
           </DialogTitle>
           <DialogContent>
@@ -792,6 +1042,7 @@ const AppointmentCalendar = ({ patient }) => {
                   value={selectedAppointment.code}
                   disabled
                   fullWidth
+                  size="small"
                 />
 
                 {patient && (
@@ -800,49 +1051,100 @@ const AppointmentCalendar = ({ patient }) => {
                     value={patient.first_name || patient.name || `Patient ${patient.id}`}
                     disabled
                     fullWidth
+                    size="small"
                   />
                 )}
 
-                <TextField
-                  label="Date & Time"
-                  value={`${new Date(selectedAppointment.start_time).toLocaleDateString()} ${formatTimeFromISO(selectedAppointment.start_time)}`}
-                  fullWidth
+                <DatePicker
+                  label="Date"
+                  value={new Date(selectedAppointment.start_time)}
+                  onChange={(newValue) => {
+                    const updatedDate = newValue;
+                    const oldDate = new Date(selectedAppointment.start_time);
+                    updatedDate.setHours(oldDate.getHours(), oldDate.getMinutes());
+                    setSelectedAppointment(prev => ({
+                      ...prev,
+                      start_time: updatedDate.toISOString(),
+                      end_time: new Date(updatedDate.getTime() + 30 * 60000).toISOString()
+                    }));
+                  }}
+                  renderInput={(params) => <TextField {...params} fullWidth size="small" />}
                 />
 
                 <TextField
                   select
-                  label="Doctor"
-                  value={newAppointment.doctor || selectedAppointment.doctor}
-                  onChange={(e) => setNewAppointment(prev => ({
-                    ...prev,
-                    doctor: e.target.value
-                  }))}
-                  SelectProps={{ native: true }}
+                  label="Start Time"
+                  value={formatTimeFromISO(selectedAppointment.start_time)}
+                  onChange={(e) => {
+                    const time = e.target.value;
+                    const [hour, suffix] = time.split(' ');
+                    let hours = parseInt(hour);
+                    if (suffix === 'pm' && hours !== 12) hours += 12;
+                    if (suffix === 'am' && hours === 12) hours = 0;
+                    const newDate = new Date(selectedDate);
+                    newDate.setHours(hours, 0, 0, 0);
+                    setNewAppointment(prev => ({
+                      ...prev,
+                      time: time,
+                      start_time: newDate.toISOString(),
+                      end_time: new Date(newDate.getTime() + 30 * 60000).toISOString()
+                    }));
+                  }}
                   fullWidth
+                  size="small"
                 >
-                  {doctors.map((doctor, index) => (
-                    <option key={index} value={doctor}>
-                      Dr.{doctor.firstname}
-                    </option>
+                  {timeSlots.map((slot, index) => (
+                    <MenuItem key={index} value={slot}>{slot}</MenuItem>
                   ))}
                 </TextField>
 
-                <TextField
-                  select
-                  label="Status"
-                  value={newAppointment.status || selectedAppointment.status}
-                  onChange={(e) => setNewAppointment(prev => ({
-                    ...prev,
-                    status: e.target.value
-                  }))}
-                  SelectProps={{ native: true }}
-                  fullWidth
-                >
-                  <option value="pending">Pending</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="cancelled">Cancelled</option>
-                  <option value="completed">Completed</option>
-                </TextField>
+                <FormControl fullWidth size="small">
+                  <InputLabel id="edit-doctor-select-label">Doctor</InputLabel>
+                  <Select
+                    labelId="edit-doctor-select-label"
+                    id="edit-doctor-select"
+                    value={newAppointment.doctor?.id || selectedAppointment?.doctor?.id || ''}
+                    label="Doctor"
+                    onChange={(e) => {
+                      const selectedDoctor = doctors.find(d => d.id === e.target.value);
+                      setNewAppointment(prev => ({
+                        ...prev,
+                        doctor: selectedDoctor
+                      }));
+                    }}
+                  >
+                    {Array.isArray(doctors) ? (
+                      doctors.map((doctor) => (
+                        <MenuItem key={doctor.id} value={doctor.id}>
+                          Dr. {doctor.firstname} {doctor.firstname}
+                        </MenuItem>
+                      ))
+                    ) : (
+                      <MenuItem value="">No doctors available</MenuItem>
+                    )}
+
+                  </Select>
+                </FormControl>
+
+                <FormControl fullWidth size="small">
+                  <InputLabel id="edit-status-select-label">Status</InputLabel>
+                  <Select
+                    labelId="edit-status-select-label"
+                    id="edit-status-select"
+                    value={newAppointment.status || selectedAppointment.status}
+                    label="Status"
+                    onChange={(e) => setNewAppointment(prev => ({
+                      ...prev,
+                      status: e.target.value
+                    }))}
+                  >
+                    <MenuItem value="pending">Pending</MenuItem>
+                    <MenuItem value="confirmed">Confirmed</MenuItem>
+                    <MenuItem value="cancelled">Cancelled</MenuItem>
+                    <MenuItem value="completed">Completed</MenuItem>
+                    <MenuItem value="postponed">Postponed</MenuItem>
+                  </Select>
+                </FormControl>
 
                 <TextField
                   label="Notes"
@@ -854,6 +1156,7 @@ const AppointmentCalendar = ({ patient }) => {
                     notes: e.target.value
                   }))}
                   fullWidth
+                  size="small"
                 />
               </Box>
             )}
@@ -863,17 +1166,22 @@ const AppointmentCalendar = ({ patient }) => {
               onClick={handleDeleteAppointment}
               color="error"
               startIcon={<DeleteIcon />}
+              size="small"
             >
               Delete
             </Button>
             <Box sx={{ flexGrow: 1 }} />
-            <Button onClick={() => setOpenEditDialog(false)}>Cancel</Button>
             <Button
-              onClick={handleUpdateAppointment}
-              variant="contained"
-              startIcon={<EditIcon />}
+              onClick={() => setOpenEditDialog(false)}
+              size="small"
+              sx={{ color: primaryColor }}
             >
-              Update
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateAppointment}
+                    variant="contained"
+                    startIcon={<EditIcon />}
+                    size="small" color="primary">Update
             </Button>
           </DialogActions>
         </Dialog>
@@ -881,5 +1189,4 @@ const AppointmentCalendar = ({ patient }) => {
     </LocalizationProvider>
   );
 };
-
 export default AppointmentCalendar;

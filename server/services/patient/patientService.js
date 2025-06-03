@@ -1,69 +1,85 @@
 const CrudService = require('./../CrudService');
 const patient = require('../../models/patientSchema');
-const moment = require('moment');  // You can use moment.js or the Date object for date manipulation
+const moment = require('moment');
 
 class PatientService extends CrudService {
-  constructor(model) {
+  constructor(model, io) {
     super(model);
+    this.io = io;
   }
-  async create(data,io, userSockets) {
 
-    const {code,date_of_birth} = data;
-    if (!code)
-      throw new Error("Patient ID is required");
+  async create(data) {
+    const { code, date_of_birth,application_fee_amount } = data;
+    if (!code) throw new Error("Patient ID is required");
 
-    // Check if a LabTest with the same code and patient already exists
-    const existing = await patient.findOne({
-      where: { code:code },
-    });
-    if (existing) {
-      throw new Error("patient code already exists");
-    }
-    if (date_of_birth) {
-      const page = this.calculateAge(date_of_birth);
-      data.age = page;  // Add the calculated age to the data before creating the patient
-    }
-    // Create the new patient
+    const existing = await patient.findOne({ where: { code } });
+    if (existing) throw new Error("Patient code already exists");
+
+    const now = new Date();
+    data.created_at = now;
+    data.updated_at = now;
+
     const newPatient = await super.create(data);
-
-    // Prepare the notification data
-    const notificationData = {
-      type: 'new_patient',
-      patientId: newPatient.id,
-      code: newPatient.code,
-      name: `${newPatient.firstName || ''} ${newPatient.lastName || ''}`.trim(),
-      timestamp: new Date().toISOString(),
-      message: `New patient registered: ${newPatient.code}`
-    };
-    if (io) {
-      io.to('doctors_room').emit('new_patient', notificationData);
-    }
+    this.sendDoctorNotification(newPatient, 'created');
     return newPatient;
-  };
-  // Method to calculate age based on date of birth
-    calculateAge(date_of_birth) {
-      const birthDate = moment(date_of_birth);
-      const currentDate = moment();
+  }
 
-      const years = currentDate.diff(birthDate, 'years');
-      birthDate.add(years, 'years');
-
-      const months = currentDate.diff(birthDate, 'months');
-      birthDate.add(months, 'months');
-
-      const weeks = currentDate.diff(birthDate, 'weeks');
-      birthDate.add(weeks, 'weeks');
-
-      const days = currentDate.diff(birthDate, 'days');
-
-      const parts = [];
-
-      if (years) parts.push(`${years} year${years !== 1 ? 's' : ''}`);
-      if (months) parts.push(`${months} month${months !== 1 ? 's' : ''}`);
-      if (weeks) parts.push(`${weeks} week${weeks !== 1 ? 's' : ''}`);
-      if (days) parts.push(`${days} day${days !== 1 ? 's' : ''}`);
-
-      return parts.length ? parts.join(', ') : '0 days';
+  async update(id, updateData) {  // Add updateData parameter
+    const existingPatient = await patient.findOne({ where: { id } });
+    if (!existingPatient) {
+      throw new Error("Patient does not exist");
     }
+
+    // // Calculate age if date_of_birth is being updated
+    // if (updateData.date_of_birth) {
+    //   updateData.age = this.calculateAge(updateData.date_of_birth);
+    // }
+
+    const updatedPatient = await super.update(id, updateData);  // Pass updateData
+
+    // Determine changed fields for notification
+    const changedFields = Object.keys(updateData).filter(
+      key => existingPatient[key] !== updatedPatient[key]
+    );
+
+    this.sendDoctorNotification(updatedPatient, 'updated', changedFields);
+    return updatedPatient;
+  }
+
+  sendDoctorNotification(patient, action, changedFields = []) {
+    if (!this.io) return;
+
+    const message = action === 'created'
+      ? `New patient registered: ${patient.first_name || ''} ${patient.last_name || ''}`
+      : `Patient updated (${changedFields.join(', ')}): ${patient.first_name || ''} ${patient.last_name || ''}`;
+
+    this.io.to('doctor').emit('doctor_notification', {
+      id: Date.now(),
+      title: action === 'created' ? 'New Patient Created' : 'Patient Data Updated',
+      message,
+      type: 'message',
+      timestamp: new Date().toISOString(),
+      role: 'doctor',
+      patientId: patient.id,
+      changes: changedFields
+    });
+  }
+
+  async bulkCreate(dataArray) {
+    if (!Array.isArray(dataArray) || dataArray.length === 0) {
+      throw new Error("Bulk data must be a non-empty array");
+    }
+
+    for (const item of dataArray) {
+      const existing = await this.model.findOne({ where: { code: item.code } });
+      if (existing) {
+        throw new Error(`Patient code '${item.code}' already exists`);
+      }
+
+    }
+    // All validations passed — proceed with bulk create
+    return this.model.bulkCreate(dataArray);
+  }
 }
-module.exports=PatientService;
+
+module.exports = PatientService;

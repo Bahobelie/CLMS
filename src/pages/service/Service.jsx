@@ -1,23 +1,86 @@
 import GenericDataGrid from '../component-overview/GenericDataGrid';
 import WorkIcon from '@mui/icons-material/Work';
 import * as Yup from 'yup';
-import { Box } from '@mui/material';
+import { Box, TextField, InputAdornment } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import axios from 'axios';
+import { useEffect, useState } from 'react';
 
 const Service = () => {
+  const apiUrl = import.meta.env.VITE_APP_API_URL;
+  const [typeOptions, setTypeOptions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [parent, setParent] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredData, setFilteredData] = useState([]);
+
+  useEffect(() => {
+    const fetchTypeOptions = async () => {
+      try {
+        const response = await axios.get(`${apiUrl}/systemConstants/by-condition`, {
+          params: { type: 'Service' }
+        });
+
+        const parent = await axios.get(`${apiUrl}/systemConstants/by-condition`, {
+          params: { type: 'LabTest' }
+        });
+
+        // Transform API response to { value, label } format
+        const options = response.data.map(item => ({
+          key: item.id,
+          value: item.name,
+          label: item.name
+        }));
+
+        const parents = parent.data.map(item => ({
+          value: item.index,
+          label: item.name
+        }));
+
+        setParent(parents);
+        setTypeOptions(options);
+      } catch (error) {
+        console.error('Error fetching type options:', error);
+        setTypeOptions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTypeOptions();
+  }, []);
+
+
+
   const serviceFormFields = [
     { name: 'name', label: 'Service Name', type: 'text', required: true },
     { name: 'description', label: 'Description', type: 'text' },
     { name: 'remark', label: 'Remark', type: 'text' },
-    { name: 'amount', label: 'Amount', type: 'number' },
+    { name: 'amount', label: 'Amount', type: 'text' },
+    { name: 'referencerange', label: 'ReferenceRange', type: 'text' },
     {
       name: 'status',
       label: 'Status',
       type: 'select',
       options: [
-        { value: 'Active', label: 'Active' },
-        { value: 'Inactive', label: 'Inactive' },
+        { value: 'true', label: 'Active' },
+        { value: 'false', label: 'Inactive' },
       ],
-    }
+    },
+    {
+      name: 'type',
+      label: 'Type',
+      type: 'select',
+      options: typeOptions,
+      loading: loading
+    },
+    {
+      name: 'parentId',
+      label: 'Parent',
+      type: 'select',
+      options: parent,
+      loading: loading
+    },
   ];
 
   const serviceValidationSchema = Yup.object({
@@ -30,7 +93,7 @@ const Service = () => {
 
   const initialServiceValues = {
     name: '',
-    type: 'Service',
+    type: '',
     description: '',
     remark: '',
     amount: null,
@@ -86,7 +149,7 @@ const Service = () => {
             fontWeight: 'medium'
           }}
         >
-          {params.value==='true'?'Active':'Inactive'}
+          {params.value === 'true' ? 'Active' : 'Inactive'}
         </Box>
       )
     },
@@ -99,21 +162,23 @@ const Service = () => {
   ];
 
   return (
-    <GenericDataGrid
-      title='Services'
-      icon={<WorkIcon />}
-      pathe='systemConstants'
-      apiEndpoint="systemConstants"
-      modelName="SystemConstant"
-      prefix="SYC-"
-      detailPagePath={`/service-details`}
-      params={{type:'Service'}}
-      columns={serviceColumns}
-      initialFormValues={initialServiceValues}
-      validationSchema={serviceValidationSchema}
-      formFields={serviceFormFields}
-      searchFields={['name', 'code', 'type']}
-    />
+
+      <GenericDataGrid
+        title='Services'
+        icon={<WorkIcon />}
+        pathe='systemConstants'
+        apiEndpoint="systemConstants"
+        modelName="SystemConstant"
+        prefix="SYC-"
+        detailPagePath={`/service-details`}
+        datapassed={parent}
+        columns={serviceColumns}
+        initialFormValues={initialServiceValues}
+        validationSchema={serviceValidationSchema}
+        formFields={serviceFormFields}
+        searchFields={['name', 'code', 'type']}
+        externalSearchQuery={searchQuery} // Pass the search query to GenericDataGrid
+      />
   );
 };
 

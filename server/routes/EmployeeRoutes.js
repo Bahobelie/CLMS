@@ -18,4 +18,16 @@ router.put('/:id', EmployeeController.update);
 router.delete('/:id', EmployeeController.delete);
 router.get('/by-code/:code', EmployeeController.getByCode);
 
+router.post('/bulk', async (req, res) => {
+  try {
+    const data=req.body
+
+
+    // Call the service method correctly
+    const response = await EmployeeServices.bulkCreate(data);
+    res.status(201).json(response);
+  } catch (e) {
+    res.status(400).json({ message: e.message });
+  }
+});
 module.exports = router;

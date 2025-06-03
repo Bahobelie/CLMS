@@ -35,11 +35,8 @@ const Administrator = sequelize.define('Administrator', {
     },
     phoneNumber: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
         unique: true,
-        validate: {
-            notEmpty: { msg: 'Please enter phone' },
-        },
     },
     role: {
         type: DataTypes.INTEGER, // Assuming role is an integer ID referencing SystemConstant

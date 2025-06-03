@@ -1,46 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Typography,
-  TextField,
   Box,
-  Button,
+  Typography,
+  Chip,
+  CircularProgress,
+  Paper,
+  ToggleButton,
+  ToggleButtonGroup,
   IconButton,
   Tooltip,
-  Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  CircularProgress
+  TextField,
+  Stack
 } from '@mui/material';
-import { Edit as EditIcon, Refresh as RefreshIcon, FilterAlt as FilterIcon } from '@mui/icons-material';
+import {
+  Refresh as RefreshIcon,
+  FilterAlt as FilterIcon
+} from '@mui/icons-material';
+import { DataGrid, GridToolbar } from '@mui/x-data-grid';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { format, isToday, parseISO, startOfDay, isSameDay } from 'date-fns';
+import { startOfDay, isSameDay } from 'date-fns';
+import { useTheme } from '@mui/material/styles';
 
 const LabTestsView = ({ patient }) => {
+  const apiUrl = import.meta.env.VITE_APP_API_URL;
+  const theme = useTheme();
+
   const [labTests, setLabTests] = useState([]);
-  const [filteredTests, setFilteredTests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editingTest, setEditingTest] = useState(null);
-  const [resultValue, setResultValue] = useState('');
   const [dateFilter, setDateFilter] = useState(startOfDay(new Date()));
   const [showDateFilter, setShowDateFilter] = useState(true);
-  const [showingLatest, setShowingLatest] = useState(false);
+  const [paymentFilter, setPaymentFilter] = useState('all');
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [refreshCount, setRefreshCount] = useState(0);
+
+  const [paginationModel, setPaginationModel] = useState({
+    page: 0,
+    pageSize: 10,
+  });
 
   const fetchLabTests = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:4000/api/labTests/by-condition/`, {
+      const response = await axios.get(`${apiUrl}/labTests/by-condition/`, {
         params: {
           patientid: patient.id
         }
@@ -49,23 +53,6 @@ const LabTestsView = ({ patient }) => {
         new Date(b.createdAt) - new Date(a.createdAt)
       );
       setLabTests(sortedTests);
-
-      // Check if there are tests for today
-      const hasTodayTests = sortedTests.some(test =>
-        isSameDay(new Date(test.createdAt), new Date())
-      );
-
-      if (!hasTodayTests && sortedTests.length > 0) {
-        // If no tests today, show the most recent tests
-        setShowingLatest(true);
-        setFilteredTests(sortedTests.slice(0, 5)); // Show 5 most recent
-      } else {
-        setShowingLatest(false);
-        const todayTests = sortedTests.filter(test =>
-          isSameDay(new Date(test.createdAt), new Date())
-        );
-        setFilteredTests(todayTests);
-      }
     } catch (error) {
       console.error('Error fetching lab tests:', error);
     } finally {
@@ -74,43 +61,47 @@ const LabTestsView = ({ patient }) => {
   };
 
   useEffect(() => {
-    fetchLabTests();;
-
-  }, [patient]);
-
-  useEffect(() => {
-    if (labTests.length > 0 && showDateFilter) {
-      const filtered = labTests.filter(test =>
-        isSameDay(new Date(test.createdAt), dateFilter)
-      );
-      setFilteredTests(filtered);
-      setShowingLatest(false);
+    if (patient?.id) {
+      fetchLabTests();
     }
-  }, [dateFilter, showDateFilter, labTests]);
+  }, [patient, refreshCount]);
 
-  const handleEditClick = (test) => {
-    setEditingTest(test);
-    setResultValue(test.result || '');
+  const getSelectedLabtest = async (labtest) => {
+    try {
+      const response = await axios.get(`${apiUrl}/systemconstants/by-condition`, {
+        params: { name: labtest.name }
+      });
+      setSelectedRow(response.data[0]);
+    } catch (err) {
+      console.error('Error:', err);
+    }
   };
 
-  const handleSaveResult = async () => {
+  const handleResultUpdate = async (newRow, oldRow) => {
     try {
-      await axios.put(`http://localhost:4000/api/labTests/${editingTest.id}`, {
-        result: resultValue,
-        status: resultValue ? 'complete' : 'pending'
+      await axios.put(`${apiUrl}/labTests/${newRow.id}`, {
+        result: newRow.result,
+        referencerange: newRow.referencerange,
+        remark:newRow.remark,
+        status: newRow.result ? 'complete' : 'pending'
       });
-      fetchLabTests();
-      setEditingTest(null);
+      setRefreshCount(prev => prev + 1);
+      return newRow;
     } catch (error) {
       console.error('Error updating test result:', error);
+      return oldRow;
     }
+  };
+
+  const handleRefresh = () => {
+    setRefreshCount(prev => prev + 1);
   };
 
   const getStatusColor = (status) => {
     switch (status) {
       case 'complete': return 'success';
       case 'pending': return 'warning';
-      case 'canceled':return 'error';
+      case 'canceled': return 'error';
       default: return 'default';
     }
   };
@@ -122,11 +113,67 @@ const LabTestsView = ({ patient }) => {
     }
   };
 
-  const showAllTests = () => {
-    setFilteredTests(labTests);
-    setShowingLatest(false);
-    setShowDateFilter(false);
-  };
+  const columns = [
+    { field: 'code', headerName: 'Test Code', width: 120, editable: false },
+    { field: 'name', headerName: 'Name', width: 180, editable: false },
+    {
+      field: 'referencerange',
+      headerName: 'Reference Range',
+      width: 180,
+      editable: true,
+      renderCell: (params) => (
+        typeof params.value === 'object'
+          ? `${params.value.min} - ${params.value.max}`
+          : params.value || 'N/A'
+      ),
+    },
+    {
+      field: 'status',
+      headerName: 'Status',
+      width: 130,
+      renderCell: (params) => (
+        <Chip
+          label={params.value}
+          color={getStatusColor(params.value)}
+          size="small"
+        />
+      ),
+      editable: false,
+    },
+    {
+      field: 'result',
+      headerName: 'Result',
+      width: 80,
+      flex: 5,
+      editable: true,
+    },
+    {
+      field: 'remark',
+      headerName: 'Remark',
+      width: 80,
+      editable: true,
+    },
+    {
+      field: 'paymntstatus',
+      headerName: 'Payment Status',
+      width: 150,
+      renderCell: (params) => (
+        params.value === 'paid' ? (
+          <span style={{ color: 'green', fontWeight: 'bold' }}>Paid</span>
+        ) : (
+          <span style={{ color: 'red', fontWeight: 'bold' }}>Unpaid</span>
+        )
+      ),
+      editable: false,
+    },
+  ];
+
+  const filteredTests = labTests.filter((test) => {
+    const dateMatch = showDateFilter ? isSameDay(new Date(test.createdAt), dateFilter) : true;
+    const paymentMatch = paymentFilter === 'all' ? true :
+      (paymentFilter === 'paid' ? test.paymntstatus === 'paid' : test.paymntstatus !== 'paid');
+    return dateMatch && paymentMatch;
+  });
 
   if (loading) return <CircularProgress />;
 
@@ -141,7 +188,7 @@ const LabTestsView = ({ patient }) => {
           flexWrap: 'wrap',
           gap: 2
         }}>
-          <Typography variant="h4">Lab Tests</Typography>
+          <Typography variant="h4" sx={{ color: theme.palette.primary[100] }}>Lab Tests</Typography>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {showDateFilter && (
@@ -155,6 +202,17 @@ const LabTestsView = ({ patient }) => {
               />
             )}
 
+            <ToggleButtonGroup
+              value={paymentFilter}
+              exclusive
+              onChange={(e, newValue) => newValue && setPaymentFilter(newValue)}
+              size="small"
+            >
+              <ToggleButton value="all">All</ToggleButton>
+              <ToggleButton value="paid">Paid</ToggleButton>
+              <ToggleButton value="unpaid">Unpaid</ToggleButton>
+            </ToggleButtonGroup>
+
             <Tooltip title={showDateFilter ? "Hide date filter" : "Show date filter"}>
               <IconButton
                 onClick={toggleDateFilter}
@@ -165,117 +223,56 @@ const LabTestsView = ({ patient }) => {
             </Tooltip>
 
             <Tooltip title="Refresh">
-              <IconButton onClick={fetchLabTests}>
+              <IconButton onClick={handleRefresh}>
                 <RefreshIcon />
               </IconButton>
             </Tooltip>
-
-            {showingLatest && (
-              <Button
-                variant="outlined"
-                onClick={showAllTests}
-                size="small"
-              >
-                Show All Tests
-              </Button>
-            )}
           </Box>
         </Box>
 
-        {showingLatest && (
-          <Box sx={{ mb: 2, p: 2, backgroundColor: '#fff8e1', borderRadius: 1 }}>
-            <Typography variant="body2">
-              No tests found for today. Showing {filteredTests.length} most recent tests instead.
+        <Paper sx={{ height: 600, width: '100%' }}>
+          <DataGrid
+            rows={filteredTests}
+            columns={columns}
+            pageSizeOptions={[10, 25, 50]}
+            paginationModel={paginationModel}
+            onPaginationModelChange={setPaginationModel}
+            onRowClick={(params) => getSelectedLabtest(params.row)}
+            processRowUpdate={handleResultUpdate}
+            onProcessRowUpdateError={(error) => console.error(error)}
+            editMode="cell"
+            slots={{
+              toolbar: GridToolbar,
+            }}
+            slotProps={{
+              toolbar: {
+                showQuickFilter: true,
+              },
+            }}
+            initialState={{
+              filter: {
+                filterModel: {
+                  items: [],
+                  quickFilterValues: [],
+                },
+              },
+            }}
+          />
+        </Paper>
+        {selectedRow && (
+          <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+            <Typography variant="body1" fontWeight={500}>
+              Reference Range:
             </Typography>
-          </Box>
-        )}
-
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                <TableCell><strong>Test Code</strong></TableCell>
-                <TableCell><strong>Name</strong></TableCell>
-                <TableCell><strong>Description</strong></TableCell>
-                <TableCell><strong>Reference Range</strong></TableCell>
-                <TableCell><strong>Status</strong></TableCell>
-                <TableCell><strong>Result</strong></TableCell>
-                <TableCell><strong>Date</strong></TableCell>
-                <TableCell><strong>Actions</strong></TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredTests.length > 0 ? (
-                filteredTests.map((test) => (
-                  <TableRow key={test.id}>
-                    <TableCell>{test.code}</TableCell>
-                    <TableCell>{test.name}</TableCell>
-                    <TableCell>{test.description}</TableCell>
-                    <TableCell>{test.referencerange}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={test.status}
-                        color={getStatusColor(test.status)}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {test.result || 'Not available'}
-                    </TableCell>
-                    <TableCell>
-                      {format(new Date(test.createdAt), 'MMM dd, yyyy - hh:mm a')}
-                    </TableCell>
-                    <TableCell>
-                      <Tooltip title="Edit Result">
-                        <IconButton onClick={() => handleEditClick(test)}>
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={8} align="center">
-                    No tests found for selected date
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-
-        {/* Edit Result Dialog */}
-        <Dialog open={Boolean(editingTest)} onClose={() => setEditingTest(null)}>
-          <DialogTitle>
-            Edit Test Result - {editingTest?.name}
-          </DialogTitle>
-          <DialogContent>
-            <Box sx={{ minWidth: 400, pt: 2 }}>
-              <TextField
-                label="Test Result"
-                fullWidth
-                value={resultValue}
-                onChange={(e) => setResultValue(e.target.value)}
-                multiline
-                rows={4}
-              />
-              <Typography variant="caption" color="textSecondary">
-                Reference: {editingTest?.referencerange}
-              </Typography>
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setEditingTest(null)}>Cancel</Button>
-            <Button
-              onClick={handleSaveResult}
-              variant="contained"
+            <Chip
+              label={selectedRow.referencerange || 'N/A'
+              }
               color="primary"
-            >
-              Save Result
-            </Button>
-          </DialogActions>
-        </Dialog>
+              variant="outlined"
+              sx={{ height: 32, fontSize: 14 }}
+            />
+          </Stack>
+        )}
       </Box>
     </LocalizationProvider>
   );

@@ -1,29 +1,37 @@
-const cron = require("node-cron");
-const Patient = require("./../models/patientSchema"); // Adjust the path as needed
+const cron = require('node-cron');
+const { patient } = require('./../models'); // Ensure correct model import
+const { Op } = require('sequelize');
 
 const updateExpiredApplicationFees = async () => {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const expirationPeriod = new Date();
+  expirationPeriod.setDate(expirationPeriod.getDate() - 30); // 30 days expiration
 
   try {
-    // Find and update all records where applicationFee is "Paid" and paidAt is older than 30 days
-    const result = await Patient.updateMany(
-      { applicationFee: "Paid", createdAt: { $lte: thirtyDaysAgo } },
-      { $set: { applicationFee: "Unpaid" } }
+    const [affectedCount] = await patient.update(
+      { application_fee: 'Expired' },
+      {
+        where: {
+          application_fee: 'Active',
+          created_at: {
+            [Op.lte]: expirationPeriod
+          }
+        }
+      }
     );
 
-
-    console.log(`Updated ${result.modifiedCount} patients to Unpaid`);
+    console.log(`✅ Updated ${affectedCount} patients to "Expired" (created before ${expirationPeriod.toISOString()})`);
   } catch (error) {
-    console.error("❌ Error updating expired application fees:", error);
+    console.error('❌ Error updating expired application fees:', error);
   }
 };
 
-// Run the cron job every day at midnight
+// Run daily at midnight (0 0 * * *)
 const startFeeUpdateCronJob = () => {
-  cron.schedule("0 0 * * *", updateExpiredApplicationFees);
-  console.log("🔄 Application Fee Auto-Update Cron Job Started ✅");
+  cron.schedule('0 0 * * *', updateExpiredApplicationFees, {
+    scheduled: true,
+    timezone: "America/New_York" // Set your timezone
+  });
+  console.log('🔄 Daily Application Fee Expiration Check Job Started');
 };
 
-// Export the function
 module.exports = { startFeeUpdateCronJob };

@@ -17,15 +17,23 @@ import { Formik, Form, Field } from 'formik';
 import { useTheme } from '@mui/material/styles';
 import axios from 'axios';
 
-const PatientHistory = ({ open, onClose, patient, handelSubmite, userRole }) => {
+const PatientHistory = ({ open, onClose, initialData, handelSubmite, userRole }) => {
   const theme = useTheme();
   const apiUrl = import.meta.env.VITE_APP_API_URL;
 
   // State management
   const [tabIndex, setTabIndex] = useState(0);
-  const [labtest, setLabtest] = useState([])
+  const [labtest, setLabtest] = useState([]);
   const [expandedCategories, setExpandedCategories] = useState({});
   const [selectedTests, setSelectedTests] = useState([]);
+  const [testRemarks, setTestRemarks] = useState({});
+
+  const handleTestRemarkChange = (testId, remark) => {
+    setTestRemarks(prev => ({
+      ...prev,
+      [testId]: remark
+    }));
+  };
 
   const handleTabChange = (event, newValue) => setTabIndex(newValue);
 
@@ -40,12 +48,13 @@ const PatientHistory = ({ open, onClose, patient, handelSubmite, userRole }) => 
         inputProps: {
           min: 1,
           max: 10
-        }
+        },
       },
-      { label: 'Medical Conditions', name: 'medical_history_conditions' },
+      { label: 'Assessment', name: 'assessment', type: 'textarea' },
+      { label: 'Complaint', name: 'medical_history_conditions' },
       { label: 'Medications', name: 'medical_history_medications' },
       { label: 'Surgeries', name: 'medical_history_surgeries' },
-      { label: 'Hospitalizations', name: 'medical_history_hospitalizations' },
+      { label: 'History', name: 'medical_history_hospitalizations' },
       { label: 'Pain Location', name: 'current_symptoms_pain_location' },
       { label: 'Other Symptoms', name: 'current_symptoms_other_symptoms' },
     ],
@@ -118,19 +127,46 @@ const PatientHistory = ({ open, onClose, patient, handelSubmite, userRole }) => 
     fetchLabTest();
   }, [apiUrl]);
 
+  // Initialize selected tests and expanded categories when initialData changes
+  useEffect(() => {
+    if (initialData?.selectedLabTests) {
+      setSelectedTests(initialData.selectedLabTests.map(test => test.id));
+
+      // Expand categories that contain selected tests
+      const newExpanded = {};
+      initialData.selectedLabTests.forEach(test => {
+        const testItem = labtest.find(t => t.id === test.id);
+        if (testItem) {
+          // Expand parent if this is a child test
+          if (testItem.parentId !== null) {
+            const parent = labtest.find(t => t.index === testItem.parentId);
+            if (parent) newExpanded[parent.id] = true;
+          }
+          // Expand grandparent if this is a grandchild test
+          const child = labtest.find(t => t.index === testItem.parentId);
+          if (child && child.parentId !== null) {
+            const grandparent = labtest.find(t => t.index === child.parentId);
+            if (grandparent) newExpanded[grandparent.id] = true;
+          }
+        }
+      });
+      setExpandedCategories(newExpanded);
+    }
+  }, [initialData, labtest]);
+
   const labTestGroups = useMemo(() => {
     const groups = {};
 
     const parentTests = labtest.filter(test => test.parentId === null);
 
     parentTests.forEach(parent => {
-      const children = labtest.filter(test => test.parentId === parent.id);
+      const children = labtest.filter(test => test.parentId === parent.index);
 
       groups[parent.id] = {
         parent,
         children: children.map(child => ({
           ...child,
-          grandchildren: labtest.filter(test => test.parentId === child.id)
+          grandchildren: labtest.filter(test => test.parentId === child.index)
         }))
       };
     });
@@ -160,7 +196,7 @@ const PatientHistory = ({ open, onClose, patient, handelSubmite, userRole }) => 
 
     return [
       childId,
-      ...labtest.filter(test => test.parentId === childId).map(test => test.id)
+      ...labtest.filter(test => test.parentId === child.index).map(test => test.id)
     ];
   };
 
@@ -210,13 +246,22 @@ const PatientHistory = ({ open, onClose, patient, handelSubmite, userRole }) => 
   };
 
   const handleChildSelect = (childId, isSelected) => {
-    const allTestIds = getAllTestIdsForChild(childId);
+    const child = labtest.find(test => test.id === childId);
+    if (!child) return;
 
-    if (isSelected) {
-      setSelectedTests(prev => [...new Set([...prev, ...allTestIds])]);
-    } else {
-      setSelectedTests(prev => prev.filter(id => !allTestIds.includes(id)));
-    }
+    setSelectedTests(prev => {
+      const newSelection = new Set(prev);
+      const grandChildren = labtest.filter(test => test.parentId === child.index);
+
+      if (isSelected) {
+        newSelection.add(childId);
+        grandChildren.forEach(g => newSelection.add(g.id));
+      } else {
+        newSelection.delete(childId);
+        grandChildren.forEach(g => newSelection.delete(g.id));
+      }
+      return Array.from(newSelection);
+    });
   };
 
   const renderFields = (fields, values, setFieldValue) => (
@@ -269,12 +314,28 @@ const PatientHistory = ({ open, onClose, patient, handelSubmite, userRole }) => 
                 slotProps={{ textField: { fullWidth: true } }}
               />
             </LocalizationProvider>
+          ) : field.type === 'textarea' ? (
+            <Field
+              as={TextField}
+              multiline
+              fullWidth
+              label={field.label}
+              name={field.name}
+              rows={4}
+              maxRows={8}
+              inputProps={field.inputProps || {}}
+              InputProps={{
+                readOnly: field.readOnly || false,
+                ...field.InputProps
+              }}
+            />
           ) : (
             <Field
               as={TextField}
               fullWidth
               label={field.label}
               name={field.name}
+              value={values[field.name] || ''}
               InputProps={{ readOnly: field.readOnly || false }}
             />
           )}
@@ -292,7 +353,7 @@ const PatientHistory = ({ open, onClose, patient, handelSubmite, userRole }) => 
             bgcolor: 'background.paper',
             position: 'relative',
             overflow: 'auto',
-            maxHeight: 400,
+            maxHeight: 500,
             '& ul': { padding: 0 },
           }}
           subheader={<li />}
@@ -300,7 +361,7 @@ const PatientHistory = ({ open, onClose, patient, handelSubmite, userRole }) => 
           {Object.entries(labTestGroups).map(([parentId, group]) => (
             <li key={parentId}>
               <ul>
-                <ListSubheader sx={{ bgcolor: 'background.paper' ,p:1}}>
+                <ListSubheader sx={{ bgcolor: 'background.paper', p: 1 }}>
                   <Accordion
                     expanded={expandedCategories[parentId] || false}
                     onChange={() => handleCategoryToggle(parentId)}
@@ -329,7 +390,7 @@ const PatientHistory = ({ open, onClose, patient, handelSubmite, userRole }) => 
                             {group.parent.name}
                           </Typography>
                         }
-                        sx={{ ml: 0}}
+                        sx={{ ml: 0 }}
                       />
                     </AccordionSummary>
                     <AccordionDetails>
@@ -374,38 +435,54 @@ const PatientHistory = ({ open, onClose, patient, handelSubmite, userRole }) => 
                               <Collapse in={expandedCategories[child.id]} timeout="auto" unmountOnExit>
                                 <List component="div" disablePadding>
                                   {child.grandchildren.map((grandchild) => (
-                                    <ListItem key={grandchild.id} sx={{ pl: 8 }}>
-                                      <FormControlLabel
-                                        control={
-                                          <Checkbox
-                                            checked={selectedTests.includes(grandchild.id)}
-                                            onChange={(e) => handleTestSelect(grandchild.id, e.target.checked)}
-                                            sx={{
-                                              color: theme.palette.primary[100],
-                                              '&.Mui-checked': {
+                                    <Box key={grandchild.id}>
+                                      <ListItem sx={{ pl: 8 }}>
+                                        <FormControlLabel
+                                          control={
+                                            <Checkbox
+                                              checked={selectedTests.includes(grandchild.id)}
+                                              onChange={(e) => handleTestSelect(grandchild.id, e.target.checked)}
+                                              sx={{
                                                 color: theme.palette.primary[100],
-                                              },
-                                              '&:hover': {
-                                                backgroundColor: 'rgba(255, 0, 0, 0.1)',
-                                              },
+                                                '&.Mui-checked': {
+                                                  color: theme.palette.primary[100],
+                                                },
+                                              }}
+                                            />
+                                          }
+                                          label={
+                                            <Box>
+                                              <Typography variant='h6' sx={{ fontWeight: 'bold' }}>
+                                                {grandchild.name}
+                                              </Typography>
+                                              {grandchild.referencerange && (
+                                                <Typography variant="caption" color="text.secondary">
+                                                  Ref: {grandchild.referencerange}
+                                                </Typography>
+                                              )}
+                                            </Box>
+                                          }
+                                        />
+                                      </ListItem>
+
+                                      {/* Add this section for the remark field */}
+                                      {selectedTests.includes(grandchild.id) && (
+                                        <ListItem sx={{ pl: 12, pt: 0 }}>
+                                          <TextField
+                                            fullWidth
+                                            size="small"
+                                            label="Remark"
+                                            value={testRemarks[grandchild.id] || ''}
+                                            onChange={(e) => {
+                                              setTestRemarks(prev => ({
+                                                ...prev,
+                                                [grandchild.id]: e.target.value
+                                              }));
                                             }}
                                           />
-                                        }
-                                        label={
-                                          <Box>
-                                            <Typography variant='h6'  sx={{
-                                              fontWeight: 'bold',
-                                              fontFamily: 'Roboto, sans-serif',
-                                            }}>{grandchild.name}</Typography>
-                                            {grandchild.referencerange && (
-                                              <Typography variant="caption" color="text.secondary">
-                                                Ref: {grandchild.referencerange}
-                                              </Typography>
-                                            )}
-                                          </Box>
-                                        }
-                                      />
-                                    </ListItem>
+                                        </ListItem>
+                                      )}
+                                    </Box>
                                   ))}
                                 </List>
                               </Collapse>
@@ -433,8 +510,11 @@ const PatientHistory = ({ open, onClose, patient, handelSubmite, userRole }) => 
               return test ? (
                 <Chip
                   key={testId}
-                  label={test.name}
-                  onDelete={() => handleTestSelect(testId, false)}
+                  label={`${test.name}${testRemarks[testId] ? ` (${testRemarks[testId]})` : ''}`}
+                  onDelete={() => {
+                    handleTestSelect(testId, false);
+                    handleTestRemarkChange(testId, ''); // Clear remark when deleting
+                  }}
                 />
               ) : null;
             })}
@@ -456,12 +536,25 @@ const PatientHistory = ({ open, onClose, patient, handelSubmite, userRole }) => 
     ];
 
     allFields.forEach((field) => {
-      if (field.type === 'boolean') {
-        initialValues[field.name] = false;
-      } else if (field.type === 'date') {
-        initialValues[field.name] = null;
-      } else if(field.name==='number') {
-        initialValues[field.name] = 1;
+      // Use initialData if available, otherwise use defaults
+      if (initialData && initialData[field.name] !== undefined) {
+        // Handle date fields specially
+        if (field.type === 'date' && initialData[field.name]) {
+          initialValues[field.name] = new Date(initialData[field.name]);
+        } else {
+          initialValues[field.name] = initialData[field.name];
+        }
+      } else {
+        // Set defaults
+        if (field.type === 'boolean') {
+          initialValues[field.name] = false;
+        } else if (field.type === 'date') {
+          initialValues[field.name] = null;
+        } else if (field.type === 'number') {
+          initialValues[field.name] = 0;
+        } else {
+          initialValues[field.name] = '';
+        }
       }
     });
 
@@ -514,6 +607,22 @@ const PatientHistory = ({ open, onClose, patient, handelSubmite, userRole }) => 
     };
   };
 
+  const handleSaveAndNext = (values, tabIndex, tabs) => {
+    const submissionData = {
+      ...values,
+      selectedLabTests: labtest
+        .filter((test) => selectedTests.includes(test.id))
+        .map(test => ({
+          id: test.id,
+          name: test.name,
+          referencerange: test.referencerange,
+          remark: testRemarks[test.id] || ''
+        }))
+    };
+    handelSubmite(submissionData);
+    setTabIndex(tabIndex + 1);
+  };
+
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm"
             PaperProps={{
@@ -541,10 +650,18 @@ const PatientHistory = ({ open, onClose, patient, handelSubmite, userRole }) => 
       <Divider />
       <Formik
         initialValues={generateInitialValues()}
+        enableReinitialize={true}
         onSubmit={(values) => {
           const submissionData = {
             ...values,
-            selectedLabTests: labtest.filter((test) => selectedTests.includes(test.id))
+            selectedLabTests: labtest
+              .filter((test) => selectedTests.includes(test.id))
+              .map(test => ({
+                id: test.id,
+                name: test.name,
+                referencerange: test.referencerange,
+                remark: testRemarks[test.id] || ''
+              }))
           };
           handelSubmite(submissionData);
           onClose();
@@ -554,10 +671,12 @@ const PatientHistory = ({ open, onClose, patient, handelSubmite, userRole }) => 
           const handleCombinedReset = () => {
             formikHandleReset();
             setSelectedTests([]);
+            setTestRemarks({});
             setExpandedCategories({});
           };
 
           const { tabs, showAccessDenied } = getTabsConfig();
+          const isLastTab = tabIndex === tabs.length - 1;
 
           return (
             <Form>
@@ -601,19 +720,34 @@ const PatientHistory = ({ open, onClose, patient, handelSubmite, userRole }) => 
 
               {!showAccessDenied && (
                 <DialogActions>
-                  <Button onClick={handleCombinedReset} color="secondary" variant="outlined">
-                    Reset
-                  </Button>
-                  <Button
-                    type="submit"
-                    sx={{
-                      backgroundColor: theme.palette.primary[100],
-                      '&:hover': { backgroundColor: theme.palette.primary[100] }
-                    }}
-                    variant="contained"
-                  >
-                    Save
-                  </Button>
+                  {isLastTab ? (
+                    <>
+                      <Button onClick={handleCombinedReset} color="secondary" variant="outlined">
+                        Reset
+                      </Button>
+                      <Button
+                        type="submit"
+                        sx={{
+                          backgroundColor: theme.palette.primary[100],
+                          '&:hover': { backgroundColor: theme.palette.primary[100] }
+                        }}
+                        variant="contained"
+                      >
+                        Save
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      onClick={() => setTabIndex(tabIndex + 1)}
+                      sx={{
+                        backgroundColor: theme.palette.primary[100],
+                        '&:hover': { backgroundColor: theme.palette.primary[100] }
+                      }}
+                      variant="contained"
+                    >
+                      Next
+                    </Button>
+                  )}
                 </DialogActions>
               )}
             </Form>

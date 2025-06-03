@@ -8,6 +8,7 @@ const UltraSoundServices = new UltraSoundService(UltraSound);
 const UltraSoundController = new CrudController(UltraSoundServices);
 
 const router = express.Router();
+router.get('/by-condition',UltraSoundController.findByCondition);
 
 router.get('/', UltraSoundController.getAll);
 router.get('/:id', UltraSoundController.getById);
@@ -24,6 +25,7 @@ router.post('/upload', UltraSoundService.getUploadMiddleware(), async (req, res)
     res.status(400).json({ error: error.message });
   }
 });
+
 
 
 module.exports = router;

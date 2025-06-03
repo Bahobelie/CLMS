@@ -31,7 +31,16 @@ const PatientHistoryDialog = ({ open, onClose, patient,record }) => {
         sx: {
           height: isMobile ? '100%' : '90vh',
           maxHeight: '90vh',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          // Center the dialog
+          margin: 0,
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: isMobile ? 'none' : 'translate(-50%, -50%)',
+          // Ensure it doesn't get too wide on large screens
+          maxWidth: isMobile ? '100%' : 'calc(100% - 64px)',
+          width: '100%',
         }
       }}
     >
@@ -52,6 +61,7 @@ const PatientHistoryDialog = ({ open, onClose, patient,record }) => {
             color: theme.palette.primary[100],
             fontWeight: 'bold',
             flex: 1,
+            mt:4,
             textAlign: 'center'
           }}
         >
@@ -88,7 +98,7 @@ const PatientHistoryDialog = ({ open, onClose, patient,record }) => {
                 gap: 3,
                 height: '100%'
               }}>
-                <PatientHistoryDetails patient={patient} />
+                <PatientHistoryDetails patient={patient} historyId={record.id} />
                 <EmergencyLabReport patient={patient} />
               </Box>
             </Grid>

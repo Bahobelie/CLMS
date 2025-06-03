@@ -28,7 +28,7 @@ export default function NavGroup({ item }) {
   });
 
   // Map the allowed menu items
-  const navCollapse = allowedMenuItems?.map((menuItem) => {
+  const navCollapse = item.children?.map((menuItem) => {
     switch (menuItem.type) {
       case 'collapse':
         return (

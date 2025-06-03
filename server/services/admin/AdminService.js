@@ -21,9 +21,9 @@ class AdminService extends CrudService {
   };
 
   async login(data){
-    const { email, password} = data;
+    const { name, password} = data;
 
-    const admin = await Admin.findOne({where:{email:email}});
+    const admin = await Admin.findOne({where:{name:name}});
     if (!admin) {throw new Error("Invalid credentials");
     }
 
@@ -40,6 +40,7 @@ class AdminService extends CrudService {
     // Return success response (excluding password)
 
     const user={
+      id:admin.id,
       code:admin.code,
       email:admin.email,
       password:admin.password,
@@ -84,6 +85,46 @@ class AdminService extends CrudService {
     }
 
     return updatedRows;
+  }
+  async changePassword(adminId, currentPassword, newPassword) {
+    // 1. Find admin by ID
+    const admin = await Admin.findByPk(adminId);
+    if (!admin) {
+      throw new Error("Admin not found");
+    }
+
+    // 2. Verify current password
+    const isMatch = await bcrypt.compare(currentPassword, admin.password);
+    if (!isMatch) {
+      throw new Error("Current password is incorrect");
+    }
+
+    // 3. Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // 4. Update password
+    await admin.update({ password: hashedPassword });
+
+    return {
+      success: true,
+      message: "Password changed successfully"
+    };
+  }
+  async requestPasswordResetSimple(username) {
+    const admin = await Admin.findOne({ where: {name:username } });
+    if (!admin) {
+      throw new Error("No admin found with that username.");
+    }
+
+    const tempPassword = '123456';
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(tempPassword, salt);
+
+    await admin.update({ password: hashedPassword });
+
+
+    return { message: "Temporary password has been set. Please log in and change it immediately." };
   }
 }
 module.exports=AdminService;

@@ -19,6 +19,15 @@ const LabTest = sequelize.define('LabTest', {
     onUpdate: 'CASCADE',
     onDelete: 'SET NULL', // In case the patient is deleted, set patientid to NULL
   },
+  paymntstatus: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    validate: {
+      isIn: [
+        ['paid', 'unpaid', ''] // Array of allowed values
+      ]
+    }
+  },
   patienthistoryid: {
     type: DataTypes.INTEGER,
     allowNull: true,

@@ -1,7 +1,7 @@
 const { Sequelize, DataTypes } = require('sequelize');
 const sequelize = require('../config/connectDb'); // Your sequelize instance
 const generateNextId = require('../services/generateNextId'); // Import the generateNextId method
-
+const dayjs = require('dayjs'); // For 24-hour time formatting
 
 const Patient = sequelize.define('Patient', {
   id: {
@@ -30,7 +30,7 @@ const Patient = sequelize.define('Patient', {
     type: DataTypes.STRING,
     allowNull: false,
   },
-  date_of_birth: { // Mapping to 'date_of_birth' in PostgreSQL
+  date_of_birth: {
     type: DataTypes.DATE,
     allowNull: true,
   },
@@ -38,53 +38,95 @@ const Patient = sequelize.define('Patient', {
     type: DataTypes.STRING,
     allowNull: false,
   },
-  phone_number: { // Mapping to 'phone_number' in PostgreSQL
+  phone_number: {
     type: DataTypes.STRING,
     allowNull: true,
   },
-  bmi: { // Mapping to 'bmi' in PostgreSQL
+  bmi: {
     type: DataTypes.STRING,
     allowNull: true,
   },
-  bp: { // Mapping to 'bp' in PostgreSQL
+  bp: {
     type: DataTypes.STRING,
     allowNull: true,
   },
-  blood_group: { // Mapping to 'blood_group' in PostgreSQL
+  blood_group: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: true,
   },
   country: {
     type: DataTypes.STRING,
     defaultValue: 'Ethiopia',
     allowNull: true,
   },
-  district_state: { // Mapping to 'district_state' in PostgreSQL
+  district_state: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: true,
   },
-  application_fee: { // Mapping to 'application_fee' in PostgreSQL
+  application_fee: {
     type: DataTypes.STRING,
     defaultValue: 'Expired',
     allowNull: true,
   },
-  remark: { // Mapping to 'remarks' in PostgreSQL
+  remark: {
     type: DataTypes.STRING,
     defaultValue: 'Remark',
     allowNull: true,
   },
+  application_fee_amount: {
+    type: DataTypes.NUMBER,
+    defaultValue: 0,
+    allowNull: true,
+  },
+  referencecode: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  kebele: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  woreda: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  city: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  sub_city: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  identification_number: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
 }, {
   timestamps: true, // Automatically adds createdAt and updatedAt
-  tableName: 'patients', // Table name
-  underscored: true, // Ensures Sequelize uses snake_case for column names in PostgreSQL
+  tableName: 'patients',
+  underscored: true, // created_at, updated_at instead of camelCase
 });
 
-// Before creating a patient record, we will set the code if it's null
+// Automatically generate a unique `code` before creating a new Patient
 Patient.beforeCreate(async (patient) => {
   if (!patient.code) {
-    // Generate next ID using the generateNextId function
     patient.code = await generateNextId(Patient, 'PA-');
   }
 });
+
+// Format created_at and updated_at in 24-hour format when returning JSON
+Patient.prototype.toJSON = function () {
+  const values = { ...this.get() };
+
+  if (values.created_at) {
+    values.created_at = dayjs(values.created_at).format('YYYY-MM-DD HH:mm:ss');
+  }
+  if (values.updated_at) {
+    values.updated_at = dayjs(values.updated_at).format('YYYY-MM-DD HH:mm:ss');
+  }
+
+  return values;
+};
 
 module.exports = Patient;

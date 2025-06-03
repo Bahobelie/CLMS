@@ -1,7 +1,7 @@
 // assets
 import { AiOutlineHome, AiOutlineUsergroupAdd } from 'react-icons/ai';
 import { LuUsers } from "react-icons/lu";
-import {RiMedicineBottleLine } from 'react-icons/ri';
+import { RiMedicineBottleLine } from 'react-icons/ri';
 import { MdDateRange } from 'react-icons/md';
 import { LiaFileInvoiceSolid } from 'react-icons/lia';
 import { SiMockserviceworker } from 'react-icons/si';
@@ -11,7 +11,6 @@ import { RiGroupLine } from "react-icons/ri";
 import { TbUserHeart } from "react-icons/tb";
 import { MdOutlinePayments } from "react-icons/md";
 import { RiServiceLine } from "react-icons/ri";
-
 
 // icons
 const icons = {
@@ -30,9 +29,8 @@ const icons = {
   RiServiceLine
 };
 
-// ==============================|| MENU ITEMS - DASHBOARD ||============================== //
-
-const dashboard = {
+// Default menu items (will be filtered based on permissions)
+const defaultMenuItems = {
   id: 'group-dashboard',
   type: 'group',
   children: [
@@ -42,8 +40,7 @@ const dashboard = {
       type: 'item',
       url: '/dashboard/default',
       icon: icons.AiOutlineHome,
-      breadcrumbs: false,
-      roles: ['admin', 'doctor', 'receptionist', 'labTechnician', 'emergency', 'sonographer', 'injectionRoomStaff']
+      breadcrumbs: true
     },
     {
       id: 'patients',
@@ -51,8 +48,7 @@ const dashboard = {
       type: 'item',
       url: '/patients',
       icon: icons.LuUsers,
-      breadcrumbs: false,
-      roles: ['admin', 'doctor', 'receptionist', 'labTechnician', 'emergency', 'sonographer', 'injectionRoomStaff']
+      breadcrumbs: true
     },
     {
       id: 'Employee',
@@ -60,8 +56,7 @@ const dashboard = {
       type: 'item',
       url: '/employees',
       icon: icons.RiGroupLine,
-      breadcrumbs: false,
-      roles: ['admin', "doctor", "receptionist"]
+      breadcrumbs: true
     },
     {
       id: 'Services',
@@ -69,17 +64,15 @@ const dashboard = {
       type: 'item',
       url: '/services',
       icon: icons.RiServiceLine,
-      breadcrumbs: false,
-      roles: ['admin', "doctor", "receptionist"]
+      breadcrumbs: false
     },
     {
       id: 'Medicine',
       title: 'Medicine',
       type: 'item',
-      url: '/medicine',
+      url: '/medicines',
       icon: icons.RiMedicineBottleLine,
-      breadcrumbs: false,
-      roles: ['admin', "doctor", "receptionist"]
+      breadcrumbs: true
     },
     {
       id: 'Setting',
@@ -87,8 +80,7 @@ const dashboard = {
       type: 'item',
       url: '/settings',
       icon: icons.IoSettingsOutline,
-      breadcrumbs: false,
-      roles: ['admin', "doctor", "receptionist"]
+      breadcrumbs: false
     },
     {
       id: 'Report',
@@ -96,11 +88,9 @@ const dashboard = {
       type: 'item',
       url: '/reports',
       icon: icons.UnorderedListOutlined,
-      breadcrumbs: false,
-      roles: ['admin', "doctor", "receptionist"]
-    },
-
+      breadcrumbs: false
+    }
   ]
 };
 
-export default dashboard;
+export default defaultMenuItems;

@@ -86,9 +86,6 @@ const detailedLabTests = {
 const seedData = async () => {
   const transaction = await sequelize.transaction();
   try {
-    // Clear existing data using Sequelize
-    await SystemConstant.destroy({ where: {}, truncate: true, transaction });
-    console.log('Existing data cleared');
 
     // Seed Roles and Services
     const rolesAndServices = [

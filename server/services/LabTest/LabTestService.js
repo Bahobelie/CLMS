@@ -1,13 +1,11 @@
 const CrudService = require('./../CrudService');
 
 class LabTestService extends CrudService {
-  constructor(model) {
+  constructor(model, io) {
     super(model);
+    this.io = io;
   }
 
-  /**
-   * Creates a single lab test (with uniqueness check)
-   */
   async create(data) {
     const { patientid, code } = data;
     if (!patientid) throw new Error("Patient ID is required");
@@ -20,51 +18,101 @@ class LabTestService extends CrudService {
       throw new Error("LabTest with the same patient ID and code already exists");
     }
 
-    return super.create(data);
+    const newTest = await super.create(data);
+
+    this.sendDoctorNotification(newTest, 'created');
+    return newTest;
   }
 
-  /**
-   * Bulk creates lab tests after deactivating all existing ones
-   * @param {string} patientid - Patient ID
-   * @param {Array} labTests - Array of new lab tests to create
-   * @returns {Promise<Array>} - Newly created lab tests
-   */
   async bulkCreateWithDeactivation(patientid, labTests) {
     if (!patientid) throw new Error("Patient ID is required");
     if (!Array.isArray(labTests)) throw new Error("Lab tests must be an array");
 
-
-    // Start a database transaction (ensures atomicity)
     const transaction = await this.model.sequelize.transaction();
 
     try {
-
-      // STEP 2: Bulk insert new lab tests (default isActive: true)
       const newTests = await this.model.bulkCreate(
         labTests.map(test => ({
-          ...test
+          ...test,
         })),
-        { transaction ,validate:true}
+        { transaction}
       );
 
-      // Commit the transaction if everything succeeds
       await transaction.commit();
+
+      // Notify doctor for each new lab test
+        this.sendDoctorNotification(newTests[0], 'created');
 
       return newTests;
     } catch (error) {
-      // Rollback if any error occurs
       await transaction.rollback();
-      console.error("Validation Error Details:", error.errors); // Log Sequelize validation errors
-      throw error; // Re-throw for error handling
+      console.error("Validation Error Details:", error.message);
+      throw error;
     }
   }
 
-  /**
-   * Gets active lab tests for a patient
-   */
   async getActiveTests(patientid) {
     return this.model.findAll({
       where: { patientid, isActive: true },
+    });
+  }
+
+  async bulkUpdatePaymentStatus(ids, paymntstatus) {
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new Error("Invalid or empty IDs array");
+    }
+
+    if (!['paid', 'unpaid'].includes(paymntstatus)) {
+      throw new Error("Invalid payment status");
+    }
+
+    const transaction = await this.model.sequelize.transaction();
+
+    try {
+      const [updatedCount, updatedTests] = await this.model.update(
+        { paymntstatus },
+        {
+          where: { id: ids },
+          returning: true,
+          transaction
+        }
+      );
+
+      await transaction.commit();
+
+      if (updatedCount === 0) {
+        throw new Error("No tests found with the provided IDs");
+      }
+
+      // Optionally notify doctor
+      updatedTests.forEach(test => {
+        this.sendDoctorNotification(test, 'updated', ['paymntstatus']);
+      });
+
+      return updatedTests;
+    } catch (error) {
+      await transaction.rollback();
+      console.error("Bulk update payment status error:", error);
+      throw error;
+    }
+  }
+
+  sendDoctorNotification(test, action, changedFields = []) {
+    if (!this.io) return;
+
+    const message = action === 'created'
+      ? `New Lab Test registered for patient ID: ${test.patientid}`
+      : `Lab Test updated for patient ID: ${test.patientid} (${changedFields.join(', ')})`;
+
+    console.log('send notfication',message);
+
+    this.io.to('labtechnician').emit('labtechnician_notification', {
+      id: Date.now(),
+      title: action === 'created' ? 'New Lab Test Created' : 'Lab Test Updated',
+      message,
+      type: 'message',
+      timestamp: new Date().toISOString(),
+      role: 'labtechnician',
     });
   }
 }

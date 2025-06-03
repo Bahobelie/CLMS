@@ -1,14 +1,6 @@
 const {Sequelize} = require('sequelize');
 require('dotenv').config({path:__dirname+'/../.env'});
 
-// console.log("Environmental Variables",{
-//   Username: process.env.DB_USERNAME,
-//   Password: process.env.DATABASE_PASSWORD,
-//   address: process.env.DATABASE_PORT,
-//   host: process.env.DATABASE_URL,
-//   database: process.env.DB_NAME,
-//
-// });
 
 const sequelize = new Sequelize(
     process.env.DB_NAME,
