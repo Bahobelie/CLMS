@@ -8,7 +8,7 @@ const Patient = Loadable(lazy(() => import('pages/component/Patient')));
 const Typography = Loadable(lazy(() => import('pages/component-overview/typography')));
 const Shadow = Loadable(lazy(() => import('pages/component-overview/shadows')));
 const DashboardDefault = Loadable(lazy(() => import('pages/dashboard/index')));
-
+const NotFound=Loadable(lazy(() => import('pages/component/notfound')))
 // render - sample page
 const SamplePage = Loadable(lazy(() => import('pages/extra-pages/sample-page')));
 
@@ -46,6 +46,10 @@ const MainRoutes = {
     {
       path: 'typography',
       element: <Typography />
+    },
+    {
+      path: '*',
+      element: <NotFound />
     }
   ]
 };
