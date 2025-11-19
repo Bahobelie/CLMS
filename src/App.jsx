@@ -8,6 +8,7 @@ import store from './store/store';
 import ScrollTop from 'components/ScrollTop';
 import { CssBaseline } from '@mui/material';
 import { Provider } from 'react-redux';
+// import LanguageSwitcher from './components/i18n';
 
 // ==============================|| APP - THEME, ROUTER, LOCAL ||============================== //
 

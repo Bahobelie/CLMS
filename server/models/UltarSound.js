@@ -17,6 +17,16 @@ const Ultrasound = sequelize.define('Ultrasound', {
                         key: 'id',
                 },
         },
+        patienthistoryid: {
+                type: DataTypes.INTEGER,
+                allowNull: true,
+                references: {
+                        model: 'patient_histories', // Name of the PatientHistory table
+                        key: 'id',
+                },
+                onUpdate: 'CASCADE',
+                onDelete: 'SET NULL',
+        },
                 name:{
                         type: DataTypes.STRING,
                         allowNull: false,

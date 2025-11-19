@@ -32,3 +32,4 @@ const generateNextId = async (model, prefix) => {
 };
 
 module.exports = generateNextId;
+

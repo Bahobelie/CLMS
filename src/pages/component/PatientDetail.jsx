@@ -19,6 +19,8 @@ import {
   Refresh as RefreshIcon
 } from '@mui/icons-material';
 
+import PublishedWithChangesIcon from '@mui/icons-material/PublishedWithChanges';
+
 import defaultAvatar from '../../assets/images/users/patient.jpg';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
@@ -40,6 +42,7 @@ import LabTestsTable from '../patient/PaymentReson';
 import LabTestsView from '../patient/LabTestsView';
 import PatientImages from '../patient/PatientImages';
 import PrescriptionForm from '../patient/PrescriptionForm';
+import ReferralForm from '../patient/ReferralForm';
 
 const PatientDetail = () => {
   const theme = useTheme();
@@ -64,7 +67,8 @@ const PatientDetail = () => {
     { key: "information", menu: "patient_info", icon: <PersonIcon />, label: "Information" },
     { key: "prescriptions", menu: "prescriptions", icon: <PrescriptionIcon />, label: "Prescriptions" },
     { key: "healthinfo", menu: "health_info", icon: <HealthIcon />, label: "Health Info" },
-    { key: "labtests", menu: "lab_tests", icon: <MedicalServicesIcon />, label: "Lab Tests" }
+    { key: "labtests", menu: "lab_tests", icon: <MedicalServicesIcon />, label: "Lab Tests" },
+    { key: "Refer", menu: "lab_tests", icon: <PublishedWithChangesIcon />, label: "Refer" }
   ];
 
   // Get filtered tabs based on permissions
@@ -456,6 +460,12 @@ const PatientDetail = () => {
             <LabTestsView patient={patient} />
           </CardContent>
         );
+      case 8 :
+        return (
+          <CardContent>
+           <ReferralForm patient={patient}/>
+          </CardContent>
+        )
       default:
         return null;
     }

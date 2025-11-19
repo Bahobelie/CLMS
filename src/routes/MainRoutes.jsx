@@ -31,10 +31,10 @@ const MainRoutes = {
     </ProtectedRoute>
   ),
   children: [
-    {
-      path: '/',
-      element: <Navigate to="/dashboard/default" />, // Redirect to the default dashboard
-    },
+    // {
+    //   path: '/',
+    //   element: <Navigate to="/dashboard/default" replace />, // Redirect to the default dashboard
+    // },
     {
       path: '/dashboard',
       element: <DashboardDefault />

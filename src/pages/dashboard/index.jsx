@@ -749,7 +749,7 @@ export default function DashboardDefault() {
           <Grid item xs={12} md={4}>
             <Card sx={{ height: '100%' }}>
               <CardContent>
-                <Typography variant="h5" sx={{color:theme.palette.primary[100]}} gutterBottom>
+                <Typography variant="h5" sx={{color: theme.palette.primary[100]}} gutterBottom>
                   Patient Demographics
                 </Typography>
                 <Box sx={{ height: 300 }}>
@@ -757,10 +757,10 @@ export default function DashboardDefault() {
                     <PieChart>
                       <Pie
                         data={[
-                          { name: 'Male', value: patients.filter(p => p.gender === 'Male').length },
-                          { name: 'Female', value: patients.filter(p => p.gender === 'Female').length },
-                          { name: 'Active', value: patients.filter(p => p.application_fee === 'Active').length },
-                          { name: 'Inactive', value: patients.filter(p => p.application_fee === 'Expired').length }
+                          { name: 'Male ≤5', value: patients.filter(p => p.gender === 'Male' && p.age <= 5).length },
+                          { name: 'Male >5', value: patients.filter(p => p.gender === 'Male' && p.age > 5).length },
+                          { name: 'Female ≤5', value: patients.filter(p => p.gender === 'Female' && p.age <= 5).length },
+                          { name: 'Female >5', value: patients.filter(p => p.gender === 'Female' && p.age > 5).length }
                         ]}
                         cx="50%"
                         cy="50%"
@@ -771,10 +771,10 @@ export default function DashboardDefault() {
                         dataKey="value"
                         label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                       >
-                        <Cell fill="#4285F4" stroke="#fff" strokeWidth={1} /> {/* Male - Google Blue */}
-                        <Cell fill="#EA4335" stroke="#fff" strokeWidth={1} /> {/* Female - Google Red */}
-                        <Cell fill="#34A853" stroke="#fff" strokeWidth={1} /> {/* Active - Google Green */}
-                        <Cell fill="#FBBC05" stroke="#fff" strokeWidth={1} /> {/* Inactive - Google Yellow */}
+                        <Cell fill="#4285F4" stroke="#fff" strokeWidth={1} /> {/* Male ≤5 - Darker Blue */}
+                        <Cell fill="#EA4335" stroke="#fff" strokeWidth={1} /> {/* Male >5 - Lighter Blue */}
+                        <Cell fill="#34A853" stroke="#fff" strokeWidth={1} /> {/* Female ≤5 - Darker Red */}
+                        <Cell fill="#FBBC05" stroke="#fff" strokeWidth={1} /> {/* Female >5 - Lighter Red */}
                       </Pie>
                       <Tooltip
                         formatter={(value, name) => [`${value} patients`, name]}

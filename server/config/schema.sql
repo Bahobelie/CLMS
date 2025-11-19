@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS public.system_constants
         REFERENCES public.system_constants (id) MATCH SIMPLE
         ON UPDATE NO ACTION
         ON DELETE SET NULL
+
 );
 
 -- Table: public.employee
@@ -475,3 +476,6 @@ INSERT INTO public.rolepermission(
   ('SYC-000080', 'LabTest', 'Service', 'UltraSound', 2, NULL, NULL, true, 120, NULL, 'true', '2025-04-08 08:10:35.064', '2025-04-24 06:47:35.301'),
   ('SYC-00098', 'Test 2', 'LabTest', 'dfgdfsdfgsfdgsfgdfsgdfgsfdgsf', NULL, 11, '0.5 - 2.5%', true, 1990, 'iiiiiiiii', NULL, '2025-04-24 08:14:04.916', '2025-04-24 08:14:04.916')
   ON CONFLICT (code) DO NOTHING;
+
+
+

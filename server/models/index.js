@@ -11,7 +11,8 @@ const employee=require('.././models/Employee');
 const rolePermission=require('../models/RolePermission');
 const emergencyHealthInfo=require('../models/EmergencyHealthInfo');
 const clinicInfo=require('../models/ClinicInfo');
-const medicine=require('../models/Medicine')
+const medicine=require('../models/Medicine');
+const referral=require('../models/Referral')
 module.exports = {
   Admin,
   patient,
@@ -26,5 +27,6 @@ module.exports = {
   rolePermission,
   emergencyHealthInfo,
   clinicInfo,
-  medicine
+  medicine,
+  referral
 };

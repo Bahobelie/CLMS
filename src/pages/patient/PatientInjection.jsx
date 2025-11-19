@@ -40,9 +40,8 @@ import {
 import axios from 'axios';
 import EditLabTestModal from './EditLabTestModal';
 import ViewLabTestModal from './ViewLabTestModal';
-import UltrasoundResult from './UltrasoundResult';
 
-const PatientLabTest = ({ patient, record }) => {
+const PatientInjection = ({ patient, record }) => {
   const apiUrl = import.meta.env.VITE_APP_API_URL;
   const imageUrl = import.meta.env.VITE_APP_IMAGE_PATH;
 
@@ -53,7 +52,6 @@ const PatientLabTest = ({ patient, record }) => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedTest, setSelectedTest] = useState(null);
-
 
   // Table state
   const [order, setOrder] = useState('asc');
@@ -89,9 +87,7 @@ const PatientLabTest = ({ patient, record }) => {
           patienthistoryid: record.id
         }
       });
-      const filteredLabTests =Array.isArray(response.data)?response.data.filter(item => item.remark !== 'injection'):[];
-
-      console.log('filterd',filteredLabTests)
+      const filteredLabTests =Array.isArray(response.data)?response.data.filter(item => item.remark === 'injection'):[];
       setData(filteredLabTests || []);
     } catch (err) {
       console.error('Error fetching lab tests:', err);
@@ -142,10 +138,7 @@ const PatientLabTest = ({ patient, record }) => {
     setEditModalOpen(true);
   };
 
-  const handleViewImage = (imageUrl) => {
-    setSelectedImage(imageUrl);
-    setViewImageDialogOpen(true);
-  };
+
 
   const handleSaveSuccess = () => {
     fetchLabTests();
@@ -225,7 +218,7 @@ const PatientLabTest = ({ patient, record }) => {
       <Paper sx={{ width: '100%', overflow: 'hidden', p: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
           <Typography variant="h6" component="div">
-            Lab Tests for <span style={{color: theme.palette.primary.main}}>{patient.first_name} {patient.middle_name} (ID: {patient.code})</span>
+            Injection  for <span style={{color: theme.palette.primary.main}}>{patient.first_name} {patient.middle_name} (ID: {patient.code})</span>
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <TextField
@@ -372,7 +365,7 @@ const PatientLabTest = ({ patient, record }) => {
         />
       </Paper>
 
-      {/* Ultrasound Results Section */}
+
 
       {/* Delete Confirmation Dialog */}
       <Dialog
@@ -434,4 +427,4 @@ const PatientLabTest = ({ patient, record }) => {
   );
 };
 
-export default PatientLabTest;
+export default PatientInjection;

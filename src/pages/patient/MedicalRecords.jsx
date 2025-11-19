@@ -114,7 +114,7 @@ const MedicalRecords = ({ patient }) => {
         );
 
         if (response.status === 200) {
-          if (values.selectedLabTests?.length > 0) {
+          if (values.selectedItems?.length > 0) {
             try {
               // Get existing lab tests for this record
               const existingLabTests = await axios.get(`${apiUrl}/labTests/by-condition`, {
@@ -123,19 +123,20 @@ const MedicalRecords = ({ patient }) => {
                   patienthistoryid: editingRecord.id
                 }
               });
-
               const existingTestIds = (Array.isArray(existingLabTests.data))?existingLabTests.data.map(test => test.name):[];
 
               // Determine tests to add (newly selected)
-              const testsToAdd = values.selectedLabTests.filter(
+              const testsToAdd = values.selectedItems.filter(
                 test => !existingTestIds.includes(test.name)
               );
 
+              const timestamp = Date.now();
               // Add new tests
               if (testsToAdd.length > 0) {
                 const labItemCode = await generateCode('LabTest', `LT-`);
+                const randomString = Math.random().toString(36).substr(2, 5); // e.g. "x4k29"
                 const newTests = testsToAdd.map((test, index) => ({
-                  code: `${labItemCode}${index}`,
+                  code: `${labItemCode}${randomString}-${index +1}`,
                   name: test.name || "UNNAMED_TEST",
                   description: test.description || "",
                   price: test.amount || 0,
@@ -155,7 +156,7 @@ const MedicalRecords = ({ patient }) => {
               }
 
               // Update existing tests that might have changed
-              const testsToUpdate = values.selectedLabTests.filter(
+              const testsToUpdate = values.selectedItems.filter(
                 test => existingTestIds.includes(test.id)
               );
 
@@ -210,10 +211,12 @@ const MedicalRecords = ({ patient }) => {
           patientId: patient.id,
           ...values
         };
+        console.log('labteste',values.selectedItems);
 
+        const randomString = Math.random().toString(36).substr(2, 5); // e.g. "x4k29"
         const labTests = await Promise.all(
-          values.selectedLabTests?.map(async (test, index) => ({
-            code: labItemCode + index,
+          values.selectedItems?.map(async (test, index) => ({
+            code: `${labItemCode}${randomString}-${index}`,
             name: test.name || "UNNAMED_TEST",
             description: test.description || "",
             price: test.amount || 0,
@@ -224,12 +227,13 @@ const MedicalRecords = ({ patient }) => {
           })) || []
         );
 
+
         // 1. First API call - Create Patient History
         const response = await axios.post(`${apiUrl}/patientHistorys`, payload);
 
 
         // 2. Create Lab Tests if they exist
-        if (values.selectedLabTests?.length > 0) {
+        if (values.selectedItems?.length > 0) {
           try {
             await axios.post(`${apiUrl}/labTests/bulkCreate`, {
               patientid: patient.id,

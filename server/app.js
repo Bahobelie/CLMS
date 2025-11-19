@@ -15,6 +15,7 @@ const ClinicInfoRoutes=require('./routes/ClinicInfoRoutes');
 const RolePermissionRouts=require('./routes/RolePermissionRoutes');
 const EmergencyHealthInfoRoutes=require('./routes/EmergencyHealthInfoRoutes');
 const MedicineRoutes=require('./routes/MedicineRoutes');
+const ReferralRoutes=require('./routes/ReferralRoutes');
 
 const cors = require('cors');
 const runSchema = require('./config/runSchema');
@@ -42,6 +43,7 @@ app.use('/api/permission',RolePermissionRouts)
 app.use('/api/emergencyHealthInfo',EmergencyHealthInfoRoutes)
 app.use('/api/medicines',MedicineRoutes)
 
+app.use('/api/referral',ReferralRoutes)
 app.use('/api/model',modelRelatedRoutes);
 
 app.post('/api/run-schema', async (req, res) => {

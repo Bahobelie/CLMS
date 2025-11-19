@@ -24,14 +24,25 @@ const PatientHistory = ({ open, onClose, initialData, handelSubmite, userRole })
   // State management
   const [tabIndex, setTabIndex] = useState(0);
   const [labtest, setLabtest] = useState([]);
+  const [injection, setInjection] = useState([]);
+
   const [expandedCategories, setExpandedCategories] = useState({});
   const [selectedTests, setSelectedTests] = useState([]);
   const [testRemarks, setTestRemarks] = useState({});
+  const [selectedInjections, setSelectedInjections] = useState([]);
+  const [injectionRemarks, setInjectionRemarks] = useState({});
 
   const handleTestRemarkChange = (testId, remark) => {
     setTestRemarks(prev => ({
       ...prev,
       [testId]: remark
+    }));
+  };
+
+  const handleInjectionRemarkChange = (injectionId, remark) => {
+    setInjectionRemarks(prev => ({
+      ...prev,
+      [injectionId]: remark
     }));
   };
 
@@ -124,13 +135,37 @@ const PatientHistory = ({ open, onClose, initialData, handelSubmite, userRole })
         console.log(e);
       }
     };
+    const fetchInjection = async () => {
+      try {
+        const response = await axios.get(`${apiUrl}/systemConstants/by-condition`, {
+          params: {
+            type: "Injection"
+          }
+        });
+        if (response.status === 200) {
+          setInjection(response.data);
+        }
+      } catch (e) {
+        console.log(e);
+      }
+    };
     fetchLabTest();
+    fetchInjection();
   }, [apiUrl]);
 
   // Initialize selected tests and expanded categories when initialData changes
   useEffect(() => {
     if (initialData?.selectedLabTests) {
       setSelectedTests(initialData.selectedLabTests.map(test => test.id));
+
+      // Initialize test remarks
+      const initialTestRemarks = {};
+      initialData.selectedLabTests.forEach(test => {
+        if (test.remark) {
+          initialTestRemarks[test.id] = test.remark;
+        }
+      });
+      setTestRemarks(initialTestRemarks);
 
       // Expand categories that contain selected tests
       const newExpanded = {};
@@ -151,6 +186,22 @@ const PatientHistory = ({ open, onClose, initialData, handelSubmite, userRole })
         }
       });
       setExpandedCategories(newExpanded);
+    }
+
+    if (initialData?.selectedInjections) {
+      setSelectedInjections(initialData.selectedInjections.map(inj => inj.id));
+
+      // Initialize injection remarks
+      const initialInjectionRemarks = {};
+      initialData.selectedInjections.forEach(inj => {
+        if (inj.remark) {
+          initialInjectionRemarks[inj.id] = inj.remark;
+        } else {
+          // Set default remark for injections if not provided
+          initialInjectionRemarks[inj.id] = "injection";
+        }
+      });
+      setInjectionRemarks(initialInjectionRemarks);
     }
   }, [initialData, labtest]);
 
@@ -174,6 +225,7 @@ const PatientHistory = ({ open, onClose, initialData, handelSubmite, userRole })
     return groups;
   }, [labtest]);
 
+  // Lab test helper functions
   const getAllTestIdsForParent = (parentId) => {
     const group = labTestGroups[parentId];
     if (!group) return [];
@@ -220,6 +272,12 @@ const PatientHistory = ({ open, onClose, initialData, handelSubmite, userRole })
     return allTestIds.some(id => selectedTests.includes(id)) && !isChildAllSelected(childId);
   };
 
+  // Injection helper functions
+  const isInjectionSelected = (injectionId) => {
+    return selectedInjections.includes(injectionId);
+  };
+
+  // Common toggle functions
   const handleCategoryToggle = (categoryId) => {
     setExpandedCategories(prev => ({
       ...prev,
@@ -227,11 +285,17 @@ const PatientHistory = ({ open, onClose, initialData, handelSubmite, userRole })
     }));
   };
 
+  // Lab test selection handlers
   const handleTestSelect = (testId, isSelected) => {
     if (isSelected) {
       setSelectedTests(prev => [...prev, testId]);
     } else {
       setSelectedTests(prev => prev.filter(id => id !== testId));
+      setTestRemarks(prev => {
+        const newRemarks = {...prev};
+        delete newRemarks[testId];
+        return newRemarks;
+      });
     }
   };
 
@@ -242,6 +306,11 @@ const PatientHistory = ({ open, onClose, initialData, handelSubmite, userRole })
       setSelectedTests(prev => [...new Set([...prev, ...allTestIds])]);
     } else {
       setSelectedTests(prev => prev.filter(id => !allTestIds.includes(id)));
+      setTestRemarks(prev => {
+        const newRemarks = {...prev};
+        allTestIds.forEach(id => delete newRemarks[id]);
+        return newRemarks;
+      });
     }
   };
 
@@ -259,9 +328,34 @@ const PatientHistory = ({ open, onClose, initialData, handelSubmite, userRole })
       } else {
         newSelection.delete(childId);
         grandChildren.forEach(g => newSelection.delete(g.id));
+        setTestRemarks(prevRemarks => {
+          const newRemarks = {...prevRemarks};
+          delete newRemarks[childId];
+          grandChildren.forEach(g => delete newRemarks[g.id]);
+          return newRemarks;
+        });
       }
       return Array.from(newSelection);
     });
+  };
+
+  // Injection selection handlers
+  const handleInjectionSelect = (injectionId, isSelected) => {
+    if (isSelected) {
+      setSelectedInjections(prev => [...prev, injectionId]);
+      // Set default remark for new injections
+      setInjectionRemarks(prev => ({
+        ...prev,
+        [injectionId]: "injection"
+      }));
+    } else {
+      setSelectedInjections(prev => prev.filter(id => id !== injectionId));
+      setInjectionRemarks(prev => {
+        const newRemarks = {...prev};
+        delete newRemarks[injectionId];
+        return newRemarks;
+      });
+    }
   };
 
   const renderFields = (fields, values, setFieldValue) => (
@@ -342,6 +436,93 @@ const PatientHistory = ({ open, onClose, initialData, handelSubmite, userRole })
         </Grid>
       ))}
     </Grid>
+  );
+
+  const renderInjectionTab = () => (
+    <Box sx={{ mt: 2 }}>
+      {injection.length > 0 ? (
+        <Box>
+          <List
+            sx={{
+              width: '100%',
+              bgcolor: 'background.paper',
+              position: 'relative',
+              overflow: 'auto',
+              maxHeight: 400,
+            }}
+          >
+            {Array.isArray(injection) ?(injection.map((inj) => (
+              <React.Fragment key={inj.id}>
+                <ListItem>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={isInjectionSelected(inj.id)}
+                        onChange={(e) => handleInjectionSelect(inj.id, e.target.checked)}
+                        sx={{
+                          color: theme.palette.primary[100],
+                          '&.Mui-checked': {
+                            color: theme.palette.primary[100],
+                          },
+                        }}
+                      />
+                    }
+                    label={
+                      <Box>
+                        <Typography variant='h6' sx={{ fontWeight: 'bold' }}>
+                          {inj.name}
+                        </Typography>
+                        {inj.referencerange && (
+                          <Typography variant="caption" color="text.secondary">
+                            Ref: {inj.referencerange}
+                          </Typography>
+                        )}
+                      </Box>
+                    }
+                  />
+                </ListItem>
+                {isInjectionSelected(inj.id) && (
+                  <ListItem sx={{ pl: 4, pt: 0 }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Remark"
+                      value={injectionRemarks[inj.id] || "injection"}
+                      onChange={(e) => {
+                        handleInjectionRemarkChange(inj.id, e.target.value);
+                      }}
+                    />
+                  </ListItem>
+                )}
+              </React.Fragment>
+            ))):(<></>)}
+          </List>
+
+          {selectedInjections.length > 0 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle1">Selected Injections:</Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {selectedInjections.map(injectionId => {
+                  const inj = injection.find(t => t.id === injectionId);
+                  return inj ? (
+                    <Chip
+                      key={injectionId}
+                      label={`${inj.name}${injectionRemarks[injectionId] ? ` (${injectionRemarks[injectionId]})` : ''}`}
+                      onDelete={() => {
+                        handleInjectionSelect(injectionId, false);
+                        handleInjectionRemarkChange(injectionId, ''); // Clear remark when deleting
+                      }}
+                    />
+                  ) : null;
+                })}
+              </Box>
+            </Box>
+          )}
+        </Box>
+      ) : (
+        <Typography>Loading injections...</Typography>
+      )}
+    </Box>
   );
 
   const renderLabTestTab = () => (
@@ -465,7 +646,6 @@ const PatientHistory = ({ open, onClose, initialData, handelSubmite, userRole })
                                         />
                                       </ListItem>
 
-                                      {/* Add this section for the remark field */}
                                       {selectedTests.includes(grandchild.id) && (
                                         <ListItem sx={{ pl: 12, pt: 0 }}>
                                           <TextField
@@ -474,10 +654,7 @@ const PatientHistory = ({ open, onClose, initialData, handelSubmite, userRole })
                                             label="Remark"
                                             value={testRemarks[grandchild.id] || ''}
                                             onChange={(e) => {
-                                              setTestRemarks(prev => ({
-                                                ...prev,
-                                                [grandchild.id]: e.target.value
-                                              }));
+                                              handleTestRemarkChange(grandchild.id, e.target.value);
                                             }}
                                           />
                                         </ListItem>
@@ -581,6 +758,10 @@ const PatientHistory = ({ open, onClose, initialData, handelSubmite, userRole })
             render: () => renderLabTestTab()
           },
           {
+            label: "Injection",
+            render: () => renderInjectionTab()
+          },
+          {
             label: "Other",
             render: (values, setFieldValue) => renderFields(categorizedFields.other, values, setFieldValue)
           }
@@ -605,22 +786,6 @@ const PatientHistory = ({ open, onClose, initialData, handelSubmite, userRole })
       tabs: [],
       showAccessDenied: true
     };
-  };
-
-  const handleSaveAndNext = (values, tabIndex, tabs) => {
-    const submissionData = {
-      ...values,
-      selectedLabTests: labtest
-        .filter((test) => selectedTests.includes(test.id))
-        .map(test => ({
-          id: test.id,
-          name: test.name,
-          referencerange: test.referencerange,
-          remark: testRemarks[test.id] || ''
-        }))
-    };
-    handelSubmite(submissionData);
-    setTabIndex(tabIndex + 1);
   };
 
   return (
@@ -652,26 +817,43 @@ const PatientHistory = ({ open, onClose, initialData, handelSubmite, userRole })
         initialValues={generateInitialValues()}
         enableReinitialize={true}
         onSubmit={(values) => {
+          const selectedLabItems = labtest
+            .filter(test => selectedTests.includes(test.id))
+            .map(test => ({
+              id: test.id,
+              name: test.name,
+              amount: test.amount,
+              referencerange: test.referencerange,
+              remark: testRemarks[test.id] || '',
+            }));
+
+          const selectedInjectionItems = injection
+            .filter(inj => selectedInjections.includes(inj.id))
+            .map(inj => ({
+              id: inj.id,
+              name: inj.name,
+              amount: inj.amount,
+              referencerange: inj.referencerange,
+              remark: injectionRemarks[inj.id] || 'injection',
+            }));
+
           const submissionData = {
             ...values,
-            selectedLabTests: labtest
-              .filter((test) => selectedTests.includes(test.id))
-              .map(test => ({
-                id: test.id,
-                name: test.name,
-                referencerange: test.referencerange,
-                remark: testRemarks[test.id] || ''
-              }))
+            selectedItems: [...selectedLabItems, ...selectedInjectionItems]
           };
+
           handelSubmite(submissionData);
-          onClose();
+          // console.log(submissionData);
         }}
+
       >
         {({ values, setFieldValue, handleReset: formikHandleReset }) => {
           const handleCombinedReset = () => {
             formikHandleReset();
             setSelectedTests([]);
             setTestRemarks({});
+            setSelectedInjections([]);
+            setInjectionRemarks({});
             setExpandedCategories({});
           };
 

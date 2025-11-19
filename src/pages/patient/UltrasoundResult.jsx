@@ -40,20 +40,19 @@ import {
 import axios from 'axios';
 import EditLabTestModal from './EditLabTestModal';
 import ViewLabTestModal from './ViewLabTestModal';
-import UltrasoundResult from './UltrasoundResult';
 
-const PatientLabTest = ({ patient, record }) => {
+const UltrasoundResult = ({ patient, record }) => {
   const apiUrl = import.meta.env.VITE_APP_API_URL;
   const imageUrl = import.meta.env.VITE_APP_IMAGE_PATH;
 
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedTest, setSelectedTest] = useState(null);
-
+  const [ultrasounds, setUltraSounds] = useState([]);
+  const [viewImageDialogOpen, setViewImageDialogOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   // Table state
   const [order, setOrder] = useState('asc');
@@ -75,34 +74,25 @@ const PatientLabTest = ({ patient, record }) => {
     canceled: 'error'
   };
 
-
-
-  // Fetch lab tests for the patient
-  const fetchLabTests = async () => {
-    setLoading(true);
-    setError(null);
+  // Fetch ultrasound results for the patient
+  const fetchUltraSounds = async () => {
     try {
-      const response = await axios.get(`${apiUrl}/labTests/by-condition`, {
+      const response = await axios.get(`${apiUrl}/ultarsounds/by-condition`, {
         params: {
-          patientid: patient.id,
-          isactive: true,
-          patienthistoryid: record.id
+          patientId: patient.id,
+          patienthistoryid:record.id
         }
       });
-      const filteredLabTests =Array.isArray(response.data)?response.data.filter(item => item.remark !== 'injection'):[];
-
-      console.log('filterd',filteredLabTests)
-      setData(filteredLabTests || []);
+      setUltraSounds(response.data || []);
     } catch (err) {
-      console.error('Error fetching lab tests:', err);
-      setError('Failed to load lab tests. Please try again.');
-    } finally {
-      setLoading(false);
+      console.error('Error fetching ultrasound results:', err);
+      setError('Failed to load ultrasound results. Please try again.');
     }
   };
 
+
   useEffect(() => {
-    fetchLabTests();
+    fetchUltraSounds();
   }, [patient]);
 
   // Table handlers
@@ -148,7 +138,6 @@ const PatientLabTest = ({ patient, record }) => {
   };
 
   const handleSaveSuccess = () => {
-    fetchLabTests();
     setSnackbarMessage('Test saved successfully');
     setSnackbarOpen(true);
   };
@@ -163,7 +152,6 @@ const PatientLabTest = ({ patient, record }) => {
       await axios.delete(`${apiUrl}/labTests/${selectedTest.id}`);
       setSnackbarMessage(`Test "${selectedTest.name}" deleted successfully`);
       setSnackbarOpen(true);
-      fetchLabTests(); // Refresh data
     } catch (err) {
       console.error('Error deleting test:', err);
       setSnackbarMessage('Failed to delete test');
@@ -175,7 +163,7 @@ const PatientLabTest = ({ patient, record }) => {
   };
 
   const handleRefresh = () => {
-    fetchLabTests();
+    fetchUltraSounds();
     setSnackbarMessage('Data refreshed');
     setSnackbarOpen(true);
   };
@@ -222,157 +210,117 @@ const PatientLabTest = ({ patient, record }) => {
 
   return (
     <>
-      <Paper sx={{ width: '100%', overflow: 'hidden', p: 2 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-          <Typography variant="h6" component="div">
-            Lab Tests for <span style={{color: theme.palette.primary.main}}>{patient.first_name} {patient.middle_name} (ID: {patient.code})</span>
+
+      {/* Ultrasound Results Section */}
+      <Paper sx={{ width: '100%', overflow: 'hidden', p: 2, mt: 4 }}>
+        <Typography variant="h6" component="div" sx={{ mb: 2,color:theme.palette.primary[100] }}>
+          Ultrasound Results
+        </Typography>
+
+        {ultrasounds.length === 0 ? (
+          <Typography variant="body1" color="textSecondary" sx={{ py: 2, textAlign: 'center' }}>
+            No ultrasound results available
           </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <TextField
-              size="small"
-              variant="outlined"
-              placeholder="Search tests..."
-              value={filter}
-              onChange={handleFilterChange}
-              sx={{ mr: 1, width: isMobile ? '150px' : '250px' }}
-            />
-            <Tooltip title="Add New Test">
-              <IconButton color="primary" onClick={handleAddNew}>
-                <AddIcon />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Refresh">
-              <IconButton onClick={handleRefresh}>
-                <RefreshIcon />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        </Box>
-
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        <TableContainer sx={{ maxHeight: 'calc(100vh - 300px)' }}>
-          <Table stickyHeader aria-label="lab tests table" size="small">
-            <TableHead>
-              <TableRow>
-                {columns.map((column) => (
-                  <TableCell
-                    key={column.id}
-                    align={column.align || 'left'}
-                    style={{ minWidth: column.minWidth }}
-                  >
-                    {column.sortable ? (
-                      <TableSortLabel
-                        active={orderBy === column.id}
-                        direction={orderBy === column.id ? order : 'asc'}
-                        onClick={() => handleRequestSort(column.id)}
-                      >
-                        {column.label}
-                      </TableSortLabel>
-                    ) : (
-                      column.label
-                    )}
-                  </TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loading ? (
+        ) : (
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
                 <TableRow>
-                  <TableCell colSpan={columns.length} align="center" sx={{ py: 4 }}>
-                    <CircularProgress />
-                  </TableCell>
+                  <TableCell>Code</TableCell>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Description</TableCell>
+                  <TableCell>Image</TableCell>
+                  <TableCell>Actions</TableCell>
                 </TableRow>
-              ) : sortedData.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={columns.length} align="center" sx={{ py: 4 }}>
-                    {filter ? 'No matching tests found' : 'No lab tests available'}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                sortedData
-                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                  .map((row) => (
-                    <TableRow hover key={row.id} tabIndex={-1}>
-                      <TableCell>{row.code}</TableCell>
-                      <TableCell>{row.name}</TableCell>
-                      <TableCell align="right">${row.price}</TableCell>
+              </TableHead>
+              <TableBody>
+                {Array.isArray(ultrasounds) ? (
+                  ultrasounds.map((ultrasound) => (
+                    <TableRow hover key={ultrasound.code}>
+                      <TableCell>{ultrasound.code}</TableCell>
+                      <TableCell>{ultrasound.name}</TableCell>
+                      <TableCell>{ultrasound.description || '-'}</TableCell>
                       <TableCell>
-                        {row.status && (
-                          <Chip
-                            label={row.status}
-                            color={statusColors[row.status] || 'default'}
-                            size="small"
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {row.result || (
-                          <Typography variant="body2" color="textSecondary">
-                            -
-                          </Typography>
-                        )}
+                        <Avatar
+                          variant="rounded"
+                          src={`${apiUrl}/${ultrasound.imageUrl}`}
+                          alt={ultrasound.name}
+                          sx={{ width: 56, height: 56, cursor: 'pointer' }}
+                          onClick={() =>
+                            handleViewImage(
+                              `${imageUrl}/images/${ultrasound.imageUrl.split('/').pop()}`
+                            )
+                          }
+                        />
                       </TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', gap: 1 }}>
-                          <Tooltip title="View Details">
+                          <Tooltip title="View Image">
                             <IconButton
                               size="small"
-                              onClick={() => handleView(row)}
-                              color="info"
-                            >
-                              <VisibilityIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Edit Test">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleEdit(row)}
+                              onClick={() =>
+                                handleViewImage(
+                                  `${imageUrl}/images/${ultrasound.imageUrl.split('/').pop()}`
+                                )
+                              }
                               color="primary"
                             >
-                              <EditIcon fontSize="small" />
+                              <ImageIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title="Delete Test">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleDeleteClick(row)}
-                              color="error"
-                            >
-                              <DeleteIcon fontSize="small" />
+                          <Tooltip title="Download PDF">
+                            <IconButton size="small" color="secondary">
+                              <PdfIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
                         </Box>
                       </TableCell>
                     </TableRow>
                   ))
-              )}
-              {emptyRows > 0 && (
-                <TableRow style={{ height: 53 * emptyRows }}>
-                  <TableCell colSpan={columns.length} />
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5}>No ultrasound data available</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
 
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={filteredData.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-          sx={{ borderTop: '1px solid rgba(224, 224, 224, 1)' }}
-        />
+            </Table>
+          </TableContainer>
+        )}
       </Paper>
 
-      {/* Ultrasound Results Section */}
+      {/* Image View Dialog */}
+      <Dialog
+        open={viewImageDialogOpen}
+        onClose={() => setViewImageDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Ultrasound Image</DialogTitle>
+        <DialogContent>
+          {selectedImage && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 2 }}>
+              <img
+                src={selectedImage}
+                alt="Ultrasound"
+                style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
+              />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewImageDialogOpen(false)}>Close</Button>
+          <Button
+            onClick={() => {
+              // Add download functionality here
+              window.open(selectedImage, '_blank');
+            }}
+            color="primary"
+          >
+            Download
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog
@@ -434,4 +382,4 @@ const PatientLabTest = ({ patient, record }) => {
   );
 };
 
-export default PatientLabTest;
+export default UltrasoundResult;

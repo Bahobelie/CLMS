@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http'); // Required for socket.io
 const cors = require('cors');
 const path = require('path');
+
 const app = require('./app');
 const connectDb = require('./config/connectDb');
 const { startFeeUpdateCronJob } = require('./services/feeService');
@@ -17,7 +18,7 @@ const io = new Server(server, {
   }
 });
 
-
+app.use(express.static(path.join(__dirname, '../dist')));
 const moment = require('moment-timezone');
 
 // === Timezone Middleware ===

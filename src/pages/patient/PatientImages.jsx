@@ -15,7 +15,11 @@ import {
   useMediaQuery,
   DialogTitle,
   DialogActions,
-  TextField
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel
 } from '@mui/material';
 import {
   Image as ImageIcon,
@@ -48,16 +52,42 @@ const PatientImages = ({ patient, apiUrl, refreshPatient }) => {
     file: null,
     imageUrl: '',
     title: '',
-    notes: ''
+    notes: '',
+    historyId: ''
   });
   const [editDialog, setEditDialog] = useState({
     open: false,
     image: null,
     notes: '',
-    title: ''
+    title: '',
+    historyId: ''
   });
+  const [patientHistories, setPatientHistories] = useState([]);
+  const [loadingHistories, setLoadingHistories] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    const fetchPatientHistories = async () => {
+      if (!patient?.id) return;
+
+      try {
+        setLoadingHistories(true);
+        const response = await axios.get(`${apiUrl}/patientHistorys/by-condition`, {
+          params: { patientId: patient.id }
+        });
+        setPatientHistories(response.data);
+      } catch (error) {
+        console.error('Error fetching patient histories:', error);
+        Swal.fire('Error', 'Failed to load patient histories', 'error');
+      } finally {
+        setLoadingHistories(false);
+      }
+    };
+
+    fetchPatientHistories();
+  }, [patient?.id, apiUrl]);
 
   const handleFileSelect = (file) => {
     if (!file) return;
@@ -79,7 +109,8 @@ const PatientImages = ({ patient, apiUrl, refreshPatient }) => {
         file,
         imageUrl: e.target.result,
         title: `Ultrasound ${format(new Date(), 'MMM dd, yyyy')}`,
-        notes: ''
+        notes: '',
+        historyId: ''
       });
     };
     reader.readAsDataURL(file);
@@ -104,11 +135,21 @@ const PatientImages = ({ patient, apiUrl, refreshPatient }) => {
       formData.append('code', response.data.code);
       formData.append('name', uploadPreview.title);
       formData.append('description', uploadPreview.notes);
-
+      if (uploadPreview.historyId) {
+        formData.append('patienthistoryid', uploadPreview.historyId);
+      }
+      else {
+        if (Array.isArray(patientHistories) && patientHistories.length > 0) {
+          const latestHistory = patientHistories.reduce((latest, current) =>
+            new Date(current.createdAt) > new Date(latest.createdAt) ? current : latest
+          );
+          formData.append('patienthistoryid', latestHistory.id);
+        }
+      }
       await axios.post(`${apiUrl}/ultarsounds/upload`, formData, {
-        params:{
-          patientName:patient.first_name,
-          code:response.data.code
+        params: {
+          patientName: patient.first_name,
+          code: response.data.code
         },
         headers: { 'Content-Type': 'multipart/form-data' }
       });
@@ -131,7 +172,6 @@ const PatientImages = ({ patient, apiUrl, refreshPatient }) => {
           params: { patientId: patient.id }
         });
         setImages(response.data);
-
       } catch (err) {
         console.error('Image fetch error', err);
       } finally {
@@ -169,26 +209,35 @@ const PatientImages = ({ patient, apiUrl, refreshPatient }) => {
       open: true,
       image,
       notes: image.description || '',
-      title: image.name || ''
+      title: image.name || '',
+      historyId: image.patienthistoryid || ''
     });
   };
 
   const handleEditSave = async () => {
     try {
-      const { image, title, notes } = editDialog;
+      setEditing(true);
+      const { image, title, notes, historyId } = editDialog;
       await axios.put(`${apiUrl}/ultarsounds/${image.id}`, {
         name: title,
-        description: notes
+        description: notes,
+        patienthistoryid: historyId || null
       });
 
       setImages(images.map(img =>
-        img.id === image.id ? { ...img, name: title, description: notes } : img
+        img.id === image.id ? {
+          ...img,
+          name: title,
+          description: notes,
+          patienthistoryid: historyId
+        } : img
       ));
       setEditDialog({ ...editDialog, open: false });
       await Swal.fire('Success!', 'Image details updated successfully', 'success');
-
     } catch (error) {
       await Swal.fire('Error!', 'Failed to update image details', 'error');
+    } finally {
+      setEditing(false);
     }
   };
 
@@ -267,11 +316,11 @@ const PatientImages = ({ patient, apiUrl, refreshPatient }) => {
                 </Box>
                 <Divider/>
                 <Box mt={1} sx={{
-                  maxHeight: 80, // Limit height
-                  overflow: 'hidden', // Hide overflow
+                  maxHeight: 80,
+                  overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   display: '-webkit-box',
-                  WebkitLineClamp: 3, // Show max 3 lines
+                  WebkitLineClamp: 3,
                   WebkitBoxOrient: 'vertical'
                 }}>
                   <Typography variant="subtitle2">Note</Typography>
@@ -279,7 +328,6 @@ const PatientImages = ({ patient, apiUrl, refreshPatient }) => {
                     {img.description || 'No description'}
                   </Typography>
                 </Box>
-
 
                 {hoveredImage === img.id && (
                   <Box position="absolute" top={8} right={8} display="flex" gap={1}>
@@ -334,11 +382,11 @@ const PatientImages = ({ patient, apiUrl, refreshPatient }) => {
         </DialogTitle>
         <DialogContent onWheel={handleZoomIn} sx={{ textAlign: 'center' }}>
           <Box mt={1} sx={{
-            maxHeight: 80, // Limit height
-            overflow: 'hidden', // Hide overflow
+            maxHeight: 80,
+            overflow: 'hidden',
             textOverflow: 'ellipsis',
             display: '-webkit-box',
-            WebkitLineClamp: 3, // Show max 3 lines
+            WebkitLineClamp: 3,
             WebkitBoxOrient: 'vertical'
           }}>
             <Typography variant="subtitle2">Note</Typography>
@@ -378,6 +426,24 @@ const PatientImages = ({ patient, apiUrl, refreshPatient }) => {
               value={uploadPreview.title}
               onChange={(e) => setUploadPreview({ ...uploadPreview, title: e.target.value })}
             />
+            <FormControl fullWidth>
+              <InputLabel>Associated Patient History</InputLabel>
+              <Select
+                value={uploadPreview.historyId}
+                onChange={(e) => setUploadPreview({ ...uploadPreview, historyId: e.target.value })}
+                label="Associated Patient History"
+                disabled={loadingHistories}
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {patientHistories.map((history) => (
+                  <MenuItem key={history.id} value={history.id}>
+                    #{history.id} - {history.code} ({format(new Date(history.createdAt), 'PP')})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <TextField
               label="Notes"
               fullWidth
@@ -407,6 +473,26 @@ const PatientImages = ({ patient, apiUrl, refreshPatient }) => {
               value={editDialog.title}
               onChange={(e) => setEditDialog({ ...editDialog, title: e.target.value })}
             />
+
+            <FormControl fullWidth>
+              <InputLabel>Associated Patient History</InputLabel>
+              <Select
+                value={editDialog.historyId}
+                onChange={(e) => setEditDialog({ ...editDialog, historyId: e.target.value })}
+                label="Associated Patient History"
+                disabled={loadingHistories}
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {patientHistories.map((history) => (
+                  <MenuItem key={history.id} value={history.id}>
+                    #{history.id} - {history.code} ({format(new Date(history.createdAt), 'PP')})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
             <TextField
               label="Notes"
               fullWidth
@@ -419,7 +505,13 @@ const PatientImages = ({ patient, apiUrl, refreshPatient }) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditDialog({ ...editDialog, open: false })}>Cancel</Button>
-          <Button variant="contained" onClick={handleEditSave}>Save Changes</Button>
+          <Button
+            variant="contained"
+            onClick={handleEditSave}
+            disabled={editing}
+          >
+            {editing ? 'Saving...' : 'Save Changes'}
+          </Button>
         </DialogActions>
       </Dialog>
     </CardContent>

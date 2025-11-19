@@ -8,122 +8,260 @@ import {
   Typography,
   IconButton,
   Container,
-  useMediaQuery
+  Paper,
+  Divider,
+  Chip,
+  Avatar
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { useTheme } from '@mui/material/styles';
 import PatientHistoryDetails from './PatientHistoryDetails';
 import EmergencyLabReport from './EmergencyLabReport';
 import PatientLabTest from './PatientLabTest';
+import PatientInjection from './PatientInjection';
+import UltrasoundResult from './UltrasoundResult';
 
-const PatientHistoryDialog = ({ open, onClose, patient,record }) => {
+const PatientHistoryDialog = ({ open, onClose, patient, record }) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   return (
     <Dialog
       open={open}
       onClose={onClose}
       fullWidth
-      maxWidth="lg"
-      fullScreen={isMobile}
+      maxWidth="xl"
+      fullScreen
       PaperProps={{
         sx: {
-          height: isMobile ? '100%' : '90vh',
-          maxHeight: '90vh',
-          overflow: 'hidden',
-          // Center the dialog
           margin: 0,
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: isMobile ? 'none' : 'translate(-50%, -50%)',
-          // Ensure it doesn't get too wide on large screens
-          maxWidth: isMobile ? '100%' : 'calc(100% - 64px)',
-          width: '100%',
+          borderRadius: 0,
+          boxShadow: 'none',
+          background: theme.palette.grey[50]
         }
       }}
     >
+      {/* Header */}
       <DialogTitle sx={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         position: 'sticky',
         top: 0,
-        backgroundColor: theme.palette.background.paper,
+        background: `linear-gradient(135deg, ${theme.palette.primary[100]} 60%, ${theme.palette.primary.main} 10%)`,
+        color: theme.palette.common.white,
         zIndex: theme.zIndex.appBar,
-        borderBottom: `1px solid ${theme.palette.divider}`,
-        py: 2
+        py: 2,
+        px: 3,
+        boxShadow: theme.shadows[2]
       }}>
-        <Typography
-          variant="h3"
-          sx={{
-            color: theme.palette.primary[100],
-            fontWeight: 'bold',
-            flex: 1,
-            mt:4,
-            textAlign: 'center'
-          }}
-        >
-          Patient History
-        </Typography>
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          flexGrow: 1,
+          justifyContent: 'center'
+        }}>
+          <Avatar
+            sx={{
+              bgcolor: theme.palette.secondary.main,
+              mr: 2,
+              width: 40,
+              height: 40
+            }}
+          >
+            {patient?.name?.charAt(0) || 'P'}
+          </Avatar>
+          <Box textAlign="center">
+            <Typography
+              variant="h5"
+              sx={{
+                fontWeight: 700,
+                lineHeight: 1.2,
+              }}
+            >
+              {patient?.name || 'Patient'} History
+            </Typography>
+            {record?.id && (
+              <Chip
+                label={`Record #${record.id}`}
+                size="small"
+                sx={{
+                  mt: 0.5,
+                  color: theme.palette.common.white,
+                  bgcolor: 'rgba(255,255,255,0.2)',
+                  fontSize: '0.75rem'
+                }}
+              />
+            )}
+          </Box>
+        </Box>
         <IconButton
           onClick={onClose}
           sx={{
-            position: 'absolute',
-            right: theme.spacing(2),
-            color: theme.palette.grey[500],
+            color: theme.palette.common.white,
             '&:hover': {
-              color: theme.palette.error.main
-            }
+              backgroundColor: 'rgba(255,255,255,0.2)'
+            },
+            position: 'absolute',
+            right: 16
           }}
         >
           <CloseIcon />
         </IconButton>
       </DialogTitle>
 
+      {/* Main Content - Scrollable Area */}
       <Box sx={{
         overflow: 'auto',
         height: 'calc(100% - 64px)',
-        p: isMobile ? 1 : 3
+        p: 3
       }}>
-        <Container maxWidth="xl" disableGutters={isMobile}>
+        <Container maxWidth="xl" disableGutters>
           <Grid container spacing={3}>
-
             {/* Left Column */}
             <Grid item xs={12} md={5} lg={4}>
               <Box sx={{
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 3,
-                height: '100%'
+                width: '100%'
               }}>
-                <PatientHistoryDetails patient={patient} historyId={record.id} />
-                <EmergencyLabReport patient={patient} />
+                <Paper elevation={3} sx={{
+                  p: 3,
+                  borderRadius: 3,
+                  borderLeft: `4px solid ${theme.palette.primary.main}`
+                }}>
+                  <Typography variant="h6" sx={{
+                    mb: 2,
+                    color: theme.palette.primary.dark,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}>
+                    <span>📋</span> Patient Details
+                  </Typography>
+                  <Divider sx={{ mb: 2 }} />
+                  <PatientHistoryDetails patient={patient} historyId={record.id} />
+                </Paper>
+
+                <Paper elevation={3} sx={{
+                  p: 3,
+                  borderRadius: 3,
+                  borderLeft: `4px solid ${theme.palette.secondary.main}`
+                }}>
+                  <Typography variant="h6" sx={{
+                    mb: 2,
+                    color: theme.palette.secondary.dark,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}>
+                    <span>🧪</span> Lab Reports
+                  </Typography>
+                  <Divider sx={{ mb: 2 }} />
+                  <EmergencyLabReport patient={patient} />
+                </Paper>
+
+
               </Box>
             </Grid>
 
-            {/* Right Column - Lab Tests */}
+            {/* Right Column */}
             <Grid item xs={12} md={7} lg={8}>
               <Box sx={{
-                height: '100%',
+                height: '59%',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                gap: 3,
+                width:'72rem'
               }}>
-                <PatientLabTest
-                  patient={patient}
-                  record={record}
-                  sx={{
-                    flex: 1,
-                    minHeight: 0, // Allows the component to shrink
+                <Paper elevation={3} sx={{
+                  flex: 1,
+                  p: 3,
+                  borderRadius: 3,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  borderLeft: `4px solid ${theme.palette.warning.main}`
+                }}>
+                  <Typography variant="h6" sx={{
+                    mb: 2,
+                    color: theme.palette.warning.dark,
                     display: 'flex',
-                    flexDirection: 'column'
-                  }}
-                />
+                    alignItems: 'center',
+                    gap: 1,
+                  }}>
+                    <span>🔬</span> Lab Tests
+                  </Typography>
+                  <Divider sx={{ mb: 2 }} />
+                  <PatientLabTest patient={patient} record={record} />
+                </Paper>
+
+                <Paper elevation={3} sx={{
+                  p: 3,
+                  borderRadius: 3,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  borderLeft: `4px solid ${theme.palette.error.main}`
+                }}>
+                  <Typography variant="h6" sx={{
+                    mb: 2,
+                    color: theme.palette.error.dark,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}>
+                    <span>💉</span> Injections
+                  </Typography>
+                  <Divider sx={{ mb: 2 }} />
+                  <PatientInjection patient={patient} record={record} />
+                </Paper>
+
+                <Paper elevation={3} sx={{
+                  p: 3,
+                  borderRadius: 3,
+                  borderLeft: `4px solid ${theme.palette.info.main}`
+                }}>
+                  <Typography variant="h6" sx={{
+                    mb: 2,
+                    color: theme.palette.info.dark,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}>
+                    <span>📷</span> Ultrasound Results
+                  </Typography>
+                  <Divider sx={{ mb: 2 }} />
+                  <UltrasoundResult patient={patient} record={record} />
+                </Paper>
               </Box>
             </Grid>
           </Grid>
         </Container>
+      </Box>
+
+      {/* Footer */}
+      <Box sx={{
+        position: 'sticky',
+        bottom: 0,
+        background: `linear-gradient(to bottom, transparent 0%, ${theme.palette.background.paper} 30%)`,
+        borderTop: `1px solid ${theme.palette.divider}`,
+        p: 2,
+        display: 'flex',
+        justifyContent: 'flex-end',
+        gap: 2,
+        backdropFilter: 'blur(8px)'
+      }}>
+        <Button
+          variant="outlined"
+          onClick={onClose}
+          sx={{
+            minWidth: 120,
+            borderRadius: 2,
+            textTransform: 'none',
+            fontWeight: 600
+          }}
+        >
+          Close
+        </Button>
       </Box>
     </Dialog>
   );
