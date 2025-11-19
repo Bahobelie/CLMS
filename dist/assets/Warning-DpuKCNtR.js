@@ -1,0 +1,1 @@
+import{c as h,j as r}from"./index-Dt1yGB0R.js";const n=h(r.jsx("path",{d:"M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2m1 15h-2v-2h2zm0-4h-2V7h2z"}),"Error"),o=h(r.jsx("path",{d:"M1 21h22L12 2zm12-3h-2v-2h2zm0-4h-2v-4h2z"}),"Warning");export{n as E,o as W};
